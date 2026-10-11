@@ -42,6 +42,7 @@ import {
   createFormattingToolbar,
   createTableMenu,
   selectTableCellAtTarget,
+  updateTableMenuContext,
   getFeedbackToolbarMenuHost,
   updateToolbarStates,
 } from './BubbleMenuView';
@@ -1173,8 +1174,12 @@ function initializeEditor(initialContent: string) {
       }, 0);
     });
 
-    // Create table menu
-    tableMenu = createTableMenu(editorInstance);
+    // Create table menu (with the Copilot entry for selections inside cells)
+    tableMenu = createTableMenu(editorInstance, {
+      onAddToCopilot: withEditorFocus(editorInstance, () =>
+        requestAddSelectionToCopilot(editorInstance)
+      ),
+    });
 
     // Create the editor-body context menu (Cut/Copy/Paste + Copilot)
     textMenu = createTextContextMenu();
@@ -1230,6 +1235,9 @@ function initializeEditor(initialContent: string) {
         if (selectTableCellAtTarget(editorInstance, e.target as HTMLElement)) {
           e.preventDefault();
           hideTextContextMenu(textMenu);
+          updateTableMenuContext(tableMenu, {
+            addToCopilotVisible: copilotChatAvailable && hasEditorSelection(editorInstance),
+          });
           tableMenu.style.display = 'block';
           tableMenu.style.position = 'fixed';
           tableMenu.style.left = `${e.clientX}px`;

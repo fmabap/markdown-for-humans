@@ -232,6 +232,12 @@
 - **Files:** `src/editor/MarkdownEditorProvider.ts` (`isCopilotChatAvailable`, `postCopilotChatAvailability`, `broadcastCopilotChatAvailability`, silent fallback), `src/webview/editor.ts` (`copilotChatAvailability` message + menu options), `src/webview/features/textContextMenu.ts` (`showTextContextMenu` options, `textContextMenuItemSpecs(hasSelection, copilotAvailable)`), `src/__tests__/webview/textContextMenu.test.ts` (+1 test), `CHANGELOG.md`, `wiki/User-Guide.md`, `wiki/FAQ.md`.
 - **Notes:** Availability = Copilot Chat extension present AND chat command registered; both signals are needed because VS Code forks keep the chat command even without GitHub Copilot.
 
+### 2026-10-11 – Table context menu (follow-up)
+
+- **What:** The Copilot action is now also available in the table context menu. `createTableMenu` takes an optional `onAddToCopilot` callback (entry + separator created hidden, marked with `data-action="addToCopilot"`); the new `updateTableMenuContext(menu, { addToCopilotVisible })` toggles them per show, driven by the same selection + GitHub Copilot availability gates as the text menu. `selectTableCellAtTarget` already preserves selections touching the right-clicked cell, so selected text/cells keep their exact-line narrowing (table rows resolve via the existing anchors).
+- **Files:** `src/webview/BubbleMenuView.ts` (`createTableMenu` options, `updateTableMenuContext`), `src/webview/editor.ts` (callback + per-show gating), `src/__tests__/webview/bubbleMenuView.test.ts` (+4 tests), `CHANGELOG.md`, `wiki/User-Guide.md`.
+- **Notes:** The entry is omitted entirely when no callback is passed and hidden by default, keeping the fail-closed "never show a broken entry" contract.
+
 ## 8. Decisions & Tradeoffs
 
 - **Custom HTML menu** (user choice) over the native `webview/context` contribution point. Tradeoff: must reimplement Cut/Copy/Paste/Select All to avoid a UX regression; Paste goes through a host clipboard round-trip because webview clipboard reads are unreliable.

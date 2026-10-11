@@ -27,7 +27,11 @@ jest.mock('../../webview/features/imageInsertDialog', () => ({
 
 describe('BubbleMenuView', () => {
   let createFormattingToolbar: (editor: Editor) => HTMLElement;
-  let createTableMenu: (editor: Editor) => HTMLElement;
+  let createTableMenu: (editor: Editor, options?: { onAddToCopilot?: () => void }) => HTMLElement;
+  let updateTableMenuContext: (
+    menu: HTMLElement,
+    context: { addToCopilotVisible: boolean }
+  ) => void;
   let updateToolbarStates: () => void;
   let getFeedbackToolbarMenuHost:
     ((trigger: HTMLElement | null, fallback: HTMLElement) => HTMLElement) | undefined;
@@ -51,6 +55,7 @@ describe('BubbleMenuView', () => {
     const module = await import('../../webview/BubbleMenuView');
     createFormattingToolbar = module.createFormattingToolbar;
     createTableMenu = module.createTableMenu;
+    updateTableMenuContext = module.updateTableMenuContext;
     updateToolbarStates = module.updateToolbarStates;
     setFeedbackToolbarState = module.setFeedbackToolbarState;
     getFeedbackToolbarMenuHost = (
@@ -632,6 +637,55 @@ describe('BubbleMenuView', () => {
         firstItem.click();
         expect(menu.style.display).toBe('none');
       }
+    });
+
+    it('omits the Copilot entry when no callback is provided', () => {
+      const editor = createMockEditor();
+      const menu = createTableMenu(editor);
+
+      expect(menu.querySelector('[data-action="addToCopilot"]')).toBeNull();
+    });
+
+    it('hides the Copilot entry while it is unavailable', () => {
+      const editor = createMockEditor();
+      const menu = createTableMenu(editor, { onAddToCopilot: jest.fn() });
+
+      updateTableMenuContext(menu, { addToCopilotVisible: false });
+
+      const marked = Array.from(menu.querySelectorAll<HTMLElement>('[data-action="addToCopilot"]'));
+      expect(marked.length).toBe(2); // separator + item
+      for (const element of marked) {
+        expect(element.style.display).toBe('none');
+      }
+    });
+
+    it('shows the Copilot entry with its separator on demand', () => {
+      const editor = createMockEditor();
+      const menu = createTableMenu(editor, { onAddToCopilot: jest.fn() });
+
+      updateTableMenuContext(menu, { addToCopilotVisible: true });
+
+      const marked = Array.from(menu.querySelectorAll<HTMLElement>('[data-action="addToCopilot"]'));
+      expect(marked.length).toBe(2);
+      for (const element of marked) {
+        expect(element.style.display).toBe('');
+      }
+    });
+
+    it('invokes the Copilot callback and closes the menu on its click', () => {
+      const editor = createMockEditor();
+      const onAddToCopilot = jest.fn();
+      const menu = createTableMenu(editor, { onAddToCopilot });
+      menu.style.display = 'block';
+      updateTableMenuContext(menu, { addToCopilotVisible: true });
+
+      const copilotItem = menu.querySelector(
+        '.table-menu-item[data-action="addToCopilot"]'
+      ) as HTMLElement;
+      copilotItem.click();
+
+      expect(onAddToCopilot).toHaveBeenCalledTimes(1);
+      expect(menu.style.display).toBe('none');
     });
   });
 

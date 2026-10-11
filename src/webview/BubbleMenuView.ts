@@ -128,11 +128,11 @@ function setCodeBlockNormalized(editor: Editor, language: string): void {
       attrs: { language },
       content: plainText
         ? [
-            {
-              type: 'text',
-              text: plainText,
-            },
-          ]
+          {
+            type: 'text',
+            text: plainText,
+          },
+        ]
         : undefined,
     })
     .run();
@@ -609,7 +609,7 @@ export function createFormattingToolbar(editor: Editor): HTMLElement {
         isActive: () =>
           editor.isActive('codeBlock') &&
           resolveGrammar(parseFenceInfo(editor.getAttributes('codeBlock').language).language) ===
-            resolveGrammar(language),
+          resolveGrammar(language),
       })),
     },
     {
@@ -1069,7 +1069,7 @@ export function createFormattingToolbar(editor: Editor): HTMLElement {
         : { name: 'comment-discussion-sparkle', fallback: commentsExpanded ? '●' : '○' };
     const focusedControl =
       document.activeElement instanceof HTMLButtonElement &&
-      toolbar.contains(document.activeElement)
+        toolbar.contains(document.activeElement)
         ? document.activeElement.getAttribute('data-feedback-control')
         : null;
     const startHadFocus =
@@ -1296,56 +1296,78 @@ export function selectTableCellAtTarget(editor: Editor, target: HTMLElement): bo
  * Create table context menu for row/column operations.
  *
  * @param editor - TipTap editor instance
+ * @param options - Optional actions; `onAddToCopilot` adds the "Add Selection to
+ *                  GitHub Copilot" entry (kept hidden until
+ *                  {@link updateTableMenuContext} shows it)
  * @returns HTMLElement containing the context menu
  */
-export function createTableMenu(editor: Editor): HTMLElement {
+export function createTableMenu(
+  editor: Editor,
+  options?: { onAddToCopilot?: () => void }
+): HTMLElement {
   const menu = document.createElement('div');
   menu.className = 'table-menu';
   menu.style.display = 'none';
 
   const items: Array<
-    | { separator: true }
+    | { separator: true; marker?: string }
     | {
-        label: string;
-        action: () => void;
-      }
+      label: string;
+      action: () => void;
+      marker?: string;
+    }
   > = [
-    {
-      label: 'Add Row Before',
-      action: () => editor.chain().focus().addRowBefore().run(),
-    },
-    {
-      label: 'Add Row After',
-      action: () => editor.chain().focus().addRowAfter().run(),
-    },
-    {
-      label: 'Delete Row',
-      action: () => editor.chain().focus().deleteRow().run(),
-    },
-    { separator: true },
-    {
-      label: 'Add Column Before',
-      action: () => editor.chain().focus().addColumnBefore().run(),
-    },
-    {
-      label: 'Add Column After',
-      action: () => editor.chain().focus().addColumnAfter().run(),
-    },
-    {
-      label: 'Delete Column',
-      action: () => editor.chain().focus().deleteColumn().run(),
-    },
-    { separator: true },
-    {
-      label: 'Delete Table',
-      action: () => editor.chain().focus().deleteTable().run(),
-    },
-  ];
+      {
+        label: 'Add Row Before',
+        action: () => editor.chain().focus().addRowBefore().run(),
+      },
+      {
+        label: 'Add Row After',
+        action: () => editor.chain().focus().addRowAfter().run(),
+      },
+      {
+        label: 'Delete Row',
+        action: () => editor.chain().focus().deleteRow().run(),
+      },
+      { separator: true },
+      {
+        label: 'Add Column Before',
+        action: () => editor.chain().focus().addColumnBefore().run(),
+      },
+      {
+        label: 'Add Column After',
+        action: () => editor.chain().focus().addColumnAfter().run(),
+      },
+      {
+        label: 'Delete Column',
+        action: () => editor.chain().focus().deleteColumn().run(),
+      },
+      { separator: true },
+      {
+        label: 'Delete Table',
+        action: () => editor.chain().focus().deleteTable().run(),
+      },
+    ];
+
+  if (options?.onAddToCopilot) {
+    items.push(
+      { separator: true, marker: 'addToCopilot' },
+      {
+        label: 'Add Selection to GitHub Copilot',
+        marker: 'addToCopilot',
+        action: options.onAddToCopilot,
+      }
+    );
+  }
 
   items.forEach(item => {
     if ('separator' in item) {
       const separator = document.createElement('div');
       separator.className = 'table-menu-separator';
+      if (item.marker) {
+        separator.setAttribute('data-action', item.marker);
+        separator.style.display = 'none';
+      }
       menu.appendChild(separator);
     } else {
       const menuItem = document.createElement('div');
@@ -1353,6 +1375,10 @@ export function createTableMenu(editor: Editor): HTMLElement {
       menuItem.textContent = item.label;
       menuItem.title = item.label;
       menuItem.setAttribute('aria-label', item.label);
+      if (item.marker) {
+        menuItem.setAttribute('data-action', item.marker);
+        menuItem.style.display = 'none';
+      }
       menuItem.onclick = () => {
         item.action();
         menu.style.display = 'none';
@@ -1363,4 +1389,26 @@ export function createTableMenu(editor: Editor): HTMLElement {
 
   document.body.appendChild(menu);
   return menu;
+}
+
+/** Visibility context for the table menu's selection-dependent entries. */
+export interface TableMenuContext {
+  /** Whether "Add Selection to GitHub Copilot" applies (selection + available). */
+  addToCopilotVisible: boolean;
+}
+
+/**
+ * Toggle the table menu's selection-dependent entries before it opens. The
+ * Copilot entry only makes sense with a selection and an installed GitHub
+ * Copilot, so it is created hidden and shown on demand — tools without GitHub
+ * Copilot never see it and never get an error.
+ *
+ * @param menu - Menu returned by {@link createTableMenu}
+ * @param context - Visibility flags for the marked entries
+ */
+export function updateTableMenuContext(menu: HTMLElement, context: TableMenuContext): void {
+  const display = context.addToCopilotVisible ? '' : 'none';
+  for (const element of menu.querySelectorAll<HTMLElement>('[data-action="addToCopilot"]')) {
+    element.style.display = display;
+  }
 }
