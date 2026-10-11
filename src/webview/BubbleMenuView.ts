@@ -180,6 +180,13 @@ type ToolbarActionButton = {
   preserveEditorFocus?: boolean;
   visibleText?: string;
   feedbackData?: 'start';
+  // Created hidden until an external toggle (e.g. GitHub Copilot availability)
+  // reveals it.
+  hidden?: boolean;
+  // Extra enablement beyond editor focus (e.g. "a selection exists").
+  isEnabled?: () => boolean;
+  // Explains why the button is disabled; appended to the tooltip.
+  disabledHint?: string;
 };
 
 type ToolbarDropdownItem = {
@@ -280,6 +287,21 @@ function closeAllDropdowns() {
 export function updateToolbarStates() {
   if (toolbarRefreshFunction) {
     toolbarRefreshFunction();
+  }
+}
+
+/**
+ * Show or hide the toolbar's "Add to GitHub Copilot" button. The button is
+ * created hidden and only revealed where GitHub Copilot actually exists, so
+ * tools without it never see the action and never get an error.
+ *
+ * @param toolbar - Toolbar returned by {@link createFormattingToolbar}
+ * @param visible - Whether GitHub Copilot is available here
+ */
+export function setToolbarCopilotVisible(toolbar: HTMLElement, visible: boolean): void {
+  const button = toolbar.querySelector<HTMLElement>('.copilot-add-button');
+  if (button) {
+    button.style.display = visible ? '' : 'none';
   }
 }
 
@@ -756,6 +778,30 @@ export function createFormattingToolbar(editor: Editor): HTMLElement {
     },
     {
       type: 'button',
+      label: 'Add to GitHub Copilot',
+      title: 'Add selection to GitHub Copilot',
+      icon: { name: 'copilot', fallback: '✦' },
+      className: 'copilot-add-button',
+      hidden: true,
+      preserveEditorFocus: true,
+      // Range containment instead of `selection.empty`: covers text, node and
+      // cell selections alike and stays correct for any selection shape. Thin
+      // test doubles without selection state count as "nothing to protect", so
+      // the button stays enabled instead of throwing during refresh.
+      isEnabled: () => {
+        const selection = editor.state?.selection as { from?: number; to?: number } | undefined;
+        return typeof selection?.from === 'number' && typeof selection?.to === 'number'
+          ? selection.from < selection.to
+          : true;
+      },
+      disabledHint: 'Select text first to add it to GitHub Copilot',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('addToCopilot'));
+      },
+      isActive: () => false,
+    },
+    {
+      type: 'button',
       label: 'Extension settings',
       title: 'Extension settings',
       icon: { name: 'gear', fallback: '⚙' },
@@ -781,7 +827,10 @@ export function createFormattingToolbar(editor: Editor): HTMLElement {
       element.setAttribute('aria-pressed', String(Boolean(active)));
 
       // Check if button requires focus
-      const enabled = !feedbackTransitionLocked && (config.requiresFocus ? isEditorFocused : true);
+      const enabled =
+        !feedbackTransitionLocked &&
+        (config.requiresFocus ? isEditorFocused : true) &&
+        (config.isEnabled ? config.isEnabled() : true);
       element.disabled = !enabled;
       element.classList.toggle('disabled', !enabled);
       element.setAttribute('aria-disabled', String(!enabled));
@@ -791,6 +840,8 @@ export function createFormattingToolbar(editor: Editor): HTMLElement {
         element.title = (config.title || config.label) + ' (Feedback transition in progress)';
       } else if (!enabled && config.requiresFocus) {
         element.title = (config.title || config.label) + ' (Click in document to edit)';
+      } else if (!enabled && config.disabledHint) {
+        element.title = (config.title || config.label) + ' (' + config.disabledHint + ')';
       } else {
         element.title = config.title || config.label;
       }
@@ -950,6 +1001,10 @@ export function createFormattingToolbar(editor: Editor): HTMLElement {
       button.addEventListener('mousedown', e => {
         e.preventDefault();
       });
+    }
+
+    if (btn.hidden) {
+      button.style.display = 'none';
     }
 
     button.onclick = e => {

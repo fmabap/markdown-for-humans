@@ -42,6 +42,7 @@ import {
   createFormattingToolbar,
   createTableMenu,
   selectTableCellAtTarget,
+  setToolbarCopilotVisible,
   updateTableMenuContext,
   getFeedbackToolbarMenuHost,
   updateToolbarStates,
@@ -2356,6 +2357,9 @@ window.addEventListener('message', async (event: MessageEvent) => {
         // Whether GitHub Copilot exists in this tool; gates the context menu's
         // Copilot entry so tools without it never show (or fail) the action.
         copilotChatAvailable = message.available === true;
+        if (formattingToolbar) {
+          setToolbarCopilotVisible(formattingToolbar, copilotChatAvailable);
+        }
         break;
       }
       default:
@@ -2980,6 +2984,12 @@ window.addEventListener('auditDocument', async () => {
 window.addEventListener('copyAsMarkdown', () => {
   if (!editor) return;
   copySelectionAsMarkdown(editor);
+});
+
+// Handle "Add to GitHub Copilot" from the toolbar button
+window.addEventListener('addToCopilot', () => {
+  if (!editor || isFeedbackEditingLocked()) return;
+  requestAddSelectionToCopilot(editor);
 });
 
 // Handle insert-math from toolbar buttons

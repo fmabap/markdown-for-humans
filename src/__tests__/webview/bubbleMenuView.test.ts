@@ -32,6 +32,7 @@ describe('BubbleMenuView', () => {
     menu: HTMLElement,
     context: { addToCopilotVisible: boolean }
   ) => void;
+  let setToolbarCopilotVisible: (toolbar: HTMLElement, visible: boolean) => void;
   let updateToolbarStates: () => void;
   let getFeedbackToolbarMenuHost:
     ((trigger: HTMLElement | null, fallback: HTMLElement) => HTMLElement) | undefined;
@@ -56,6 +57,7 @@ describe('BubbleMenuView', () => {
     createFormattingToolbar = module.createFormattingToolbar;
     createTableMenu = module.createTableMenu;
     updateTableMenuContext = module.updateTableMenuContext;
+    setToolbarCopilotVisible = module.setToolbarCopilotVisible;
     updateToolbarStates = module.updateToolbarStates;
     setFeedbackToolbarState = module.setFeedbackToolbarState;
     getFeedbackToolbarMenuHost = (
@@ -686,6 +688,68 @@ describe('BubbleMenuView', () => {
 
       expect(onAddToCopilot).toHaveBeenCalledTimes(1);
       expect(menu.style.display).toBe('none');
+    });
+  });
+
+  describe('toolbar Copilot button', () => {
+    it('is hidden until GitHub Copilot is available', () => {
+      const toolbar = createFormattingToolbar(createMockEditor());
+      const button = toolbar.querySelector('.copilot-add-button') as HTMLButtonElement;
+
+      expect(button).not.toBeNull();
+      expect(button.style.display).toBe('none');
+
+      setToolbarCopilotVisible(toolbar, true);
+      expect(button.style.display).toBe('');
+
+      setToolbarCopilotVisible(toolbar, false);
+      expect(button.style.display).toBe('none');
+    });
+
+    it('sits right before the Extension settings button', () => {
+      const toolbar = createFormattingToolbar(createMockEditor());
+      const buttons = Array.from(toolbar.querySelectorAll('button'));
+      const copilotIndex = buttons.findIndex(button =>
+        button.classList.contains('copilot-add-button')
+      );
+      const settingsIndex = buttons.findIndex(button =>
+        button.classList.contains('settings-button')
+      );
+
+      expect(copilotIndex).toBeGreaterThan(-1);
+      expect(settingsIndex).toBeGreaterThan(-1);
+      expect(copilotIndex).toBeLessThan(settingsIndex);
+    });
+
+    it('dispatches the add-to-Copilot action on click', () => {
+      const editor = createMockEditor();
+      const toolbar = createFormattingToolbar(editor);
+      (editor.state.selection as { from: number; to: number }).to = 5;
+      updateToolbarStates();
+
+      const listener = jest.fn();
+      window.addEventListener('addToCopilot', listener);
+      try {
+        (toolbar.querySelector('.copilot-add-button') as HTMLButtonElement).click();
+        expect(listener).toHaveBeenCalledTimes(1);
+      } finally {
+        window.removeEventListener('addToCopilot', listener);
+      }
+    });
+
+    it('is disabled without a selection and explains why', () => {
+      const editor = createMockEditor();
+      const toolbar = createFormattingToolbar(editor);
+      const button = toolbar.querySelector('.copilot-add-button') as HTMLButtonElement;
+
+      // createMockEditor starts with an empty selection.
+      updateToolbarStates();
+      expect(button.disabled).toBe(true);
+      expect(button.title).toContain('Select text first');
+
+      (editor.state.selection as { from: number; to: number }).to = 5;
+      updateToolbarStates();
+      expect(button.disabled).toBe(false);
     });
   });
 

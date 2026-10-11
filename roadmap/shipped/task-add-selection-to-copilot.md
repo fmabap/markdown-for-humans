@@ -238,6 +238,12 @@
 - **Files:** `src/webview/BubbleMenuView.ts` (`createTableMenu` options, `updateTableMenuContext`), `src/webview/editor.ts` (callback + per-show gating), `src/__tests__/webview/bubbleMenuView.test.ts` (+4 tests), `CHANGELOG.md`, `wiki/User-Guide.md`.
 - **Notes:** The entry is omitted entirely when no callback is passed and hidden by default, keeping the fail-closed "never show a broken entry" contract.
 
+### 2026-10-11 – Toolbar button (follow-up)
+
+- **What:** A toolbar button for the Copilot action, placed directly before the Extension settings gear. Created hidden and revealed by the same `copilotChatAvailability` flag as the context menus (`setToolbarCopilotVisible`); disabled without a selection with the tooltip hint "Select text first to add it to GitHub Copilot" (new `isEnabled`/`disabledHint`/`hidden` fields on `ToolbarActionButton`, range-containment check so text/node/cell selections all count). Click dispatches `addToCopilot`, bridged in `editor.ts` to the same `requestAddSelectionToCopilot` flow (with `preserveEditorFocus` so the selection survives the click).
+- **Files:** `src/webview/BubbleMenuView.ts` (button config, refresh logic, `setToolbarCopilotVisible`), `src/webview/editor.ts` (event bridge + visibility sync), `src/__tests__/webview/bubbleMenuView.test.ts` (+4 tests), `CHANGELOG.md`, `wiki/User-Guide.md`.
+- **Notes:** The button is disabled (not hidden) without a selection so its purpose stays discoverable once GitHub Copilot is present.
+
 ## 8. Decisions & Tradeoffs
 
 - **Custom HTML menu** (user choice) over the native `webview/context` contribution point. Tradeoff: must reimplement Cut/Copy/Paste/Select All to avoid a UX regression; Paste goes through a host clipboard round-trip because webview clipboard reads are unreliable.
