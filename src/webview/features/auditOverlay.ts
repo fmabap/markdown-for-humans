@@ -16,6 +16,7 @@ import {
   requestFilePickerForIssue,
 } from './auditDocument';
 import { getLevenshteinDistance } from './levenshtein';
+import * as l10n from '../l10n';
 
 // Maximum number of suggestion pills to show per issue (keeps the UI clean).
 const MAX_SUGGESTION_PILLS = 5;
@@ -290,7 +291,7 @@ export function clearToasts(): void {
 export function showAuditOverlay(editor: Editor, issues: AuditIssue[]) {
   if (issues.length === 0) {
     // Show toast instead of panel for no issues
-    showToast('Your document is healthy — no issues found!', 'success');
+    showToast(l10n.t('Your document is healthy: no issues found!'), 'success');
     return;
   }
 
@@ -306,8 +307,11 @@ export function showAuditOverlay(editor: Editor, issues: AuditIssue[]) {
     <div class="audit-overlay-backdrop"></div>
     <div class="audit-overlay-panel">
       <div class="audit-overlay-header">
-        <h3 class="audit-overlay-title">Document Audit (${issues.length} issues)</h3>
-        <button class="audit-overlay-close" aria-label="Close">
+        <h3 class="audit-overlay-title">${l10n.html(
+          issues.length === 1 ? 'Document Audit ({0} issue)' : 'Document Audit ({0} issues)',
+          issues.length
+        )}</h3>
+        <button class="audit-overlay-close" aria-label="${l10n.html('Close')}">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M8 8.707l3.646 3.647.708-.707L8.707 8l3.647-3.646-.707-.708L8 7.293 4.354 3.646l-.708.708L7.293 8l-3.647 3.646.708.707L8 8.707z"/>
           </svg>
@@ -397,8 +401,8 @@ function buildIssueItem(issue: AuditIssue): HTMLElement {
   const navBtn = document.createElement('button');
   navBtn.className = 'audit-issue-nav-btn';
   navBtn.setAttribute('type', 'button');
-  navBtn.setAttribute('aria-label', 'Navigate to issue');
-  navBtn.title = 'Jump to issue';
+  navBtn.setAttribute('aria-label', l10n.t('Navigate to issue'));
+  navBtn.title = l10n.t('Jump to issue');
   navBtn.textContent = '↗';
   headerEl.appendChild(navBtn);
 
@@ -426,13 +430,13 @@ function buildIssueItem(issue: AuditIssue): HTMLElement {
     const distance = getLevenshteinDistance(targetSlug, bestMatch);
 
     if (distance === 1) {
-      hintEl.textContent = 'Heading name changed slightly — pick the updated one:';
+      hintEl.textContent = l10n.t('Heading name changed slightly. Pick the updated one:');
     } else if (distance <= 3) {
-      hintEl.textContent = 'Seems these headings were renamed — pick the updated one:';
+      hintEl.textContent = l10n.t('Seems these headings were renamed. Pick the updated one:');
     } else if (issue.suggestions.length === 1) {
-      hintEl.textContent = 'Found a similar heading — is this what you meant?';
+      hintEl.textContent = l10n.t('Found a similar heading. Is this what you meant?');
     } else {
-      hintEl.textContent = 'Multiple similar headings found — pick the correct one:';
+      hintEl.textContent = l10n.t('Multiple similar headings found. Pick the correct one:');
     }
 
     actionEl.appendChild(hintEl);
@@ -459,11 +463,11 @@ function buildIssueItem(issue: AuditIssue): HTMLElement {
     input.type = 'text';
     input.className = 'audit-manual-input';
     input.value = issue.target;
-    input.placeholder = `Fix ${issue.type}...`;
+    input.placeholder = issue.type === 'image' ? l10n.t('Fix image...') : l10n.t('Fix link...');
 
     const fixBtn = document.createElement('button');
     fixBtn.className = 'audit-fix-button manual-fix';
-    fixBtn.textContent = 'Fix';
+    fixBtn.textContent = l10n.t('Fix');
     fixBtn.setAttribute('data-pos', String(issue.pos));
     fixBtn.setAttribute('data-type', issue.type);
     const browseBtn = buildBrowseButton(issue.type === 'image' ? 'image' : 'any');
@@ -642,8 +646,8 @@ const auditPreviewPopover = (() => {
 
     const loadingEl = document.createElement('div');
     loadingEl.className = 'audit-preview-loading';
-    loadingEl.textContent = 'Loading preview…';
-    render(createPreviewCard('Preview', loadingEl), targetRect, previewId);
+    loadingEl.textContent = l10n.t('Loading preview…');
+    render(createPreviewCard(l10n.t('Preview'), loadingEl), targetRect, previewId);
 
     if (isImageSuggestion(suggestion)) {
       if (typeof window.resolveImagePath === 'function') {
@@ -665,7 +669,7 @@ const auditPreviewPopover = (() => {
           const body = document.createElement('div');
           body.appendChild(wrapper);
           body.appendChild(caption);
-          render(createPreviewCard('Image preview', body), targetRect, previewId);
+          render(createPreviewCard(l10n.t('Image preview'), body), targetRect, previewId);
           return;
         } catch {
           if (previewId !== activePreviewId) return;
@@ -674,8 +678,8 @@ const auditPreviewPopover = (() => {
 
       const unavailable = document.createElement('div');
       unavailable.className = 'audit-preview-empty';
-      unavailable.textContent = 'Image preview is not available for this path.';
-      render(createPreviewCard('Preview unavailable', unavailable), targetRect, previewId);
+      unavailable.textContent = l10n.t('Image preview is not available for this path.');
+      render(createPreviewCard(l10n.t('Preview unavailable'), unavailable), targetRect, previewId);
       return;
     }
 
@@ -696,7 +700,7 @@ const auditPreviewPopover = (() => {
     meta.appendChild(pathEl);
     file.appendChild(icon);
     file.appendChild(meta);
-    render(createPreviewCard('File preview', file), targetRect, previewId);
+    render(createPreviewCard(l10n.t('File preview'), file), targetRect, previewId);
   }
 
   return {
@@ -715,8 +719,8 @@ function buildBrowseButton(fileType: AuditFileType): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.className = 'audit-browse-btn';
   btn.setAttribute('data-file-type', fileType);
-  btn.innerHTML = '<span class="codicon codicon-folder" aria-hidden="true"></span> Browse…';
-  btn.title = 'Open file picker to select the correct file';
+  btn.innerHTML = `<span class="codicon codicon-folder" aria-hidden="true"></span> ${l10n.html('Browse…')}`;
+  btn.title = l10n.t('Open file picker to select the correct file');
   return btn;
 }
 
@@ -778,8 +782,7 @@ function wireItemHandlers(
       browseBtn.disabled = true;
 
       // Update wait state
-      browseBtn.innerHTML =
-        '<span class="codicon codicon-clock" aria-hidden="true"></span> Waiting…';
+      browseBtn.innerHTML = `<span class="codicon codicon-clock" aria-hidden="true"></span> ${l10n.html('Waiting…')}`;
 
       try {
         const selected = await requestFilePickerForIssue(fileType);
@@ -790,14 +793,12 @@ function wireItemHandlers(
         } else {
           // User cancelled – restore button with folder icon
           browseBtn.disabled = false;
-          browseBtn.innerHTML =
-            '<span class="codicon codicon-folder" aria-hidden="true"></span> Browse…';
+          browseBtn.innerHTML = `<span class="codicon codicon-folder" aria-hidden="true"></span> ${l10n.html('Browse…')}`;
         }
       } catch {
         // Error – restore button with folder icon
         browseBtn.disabled = false;
-        browseBtn.innerHTML =
-          '<span class="codicon codicon-folder" aria-hidden="true"></span> Browse…';
+        browseBtn.innerHTML = `<span class="codicon codicon-folder" aria-hidden="true"></span> ${l10n.html('Browse…')}`;
       }
     });
   }
@@ -947,7 +948,7 @@ function applyFix(
   if (remainingCount === 0) {
     const list = overlay.querySelector('.audit-overlay-list');
     if (list) {
-      list.innerHTML = `<div style="padding:20px;text-align:center;">All fixed! 🎉</div>`;
+      list.innerHTML = `<div style="padding:20px;text-align:center;">${l10n.html('All fixed! 🎉')}</div>`;
     }
   }
 }
@@ -958,7 +959,8 @@ function applyFix(
 function updateAuditTitleCount(overlay: HTMLElement, remainingCount: number): void {
   const titleEl = overlay.querySelector('.audit-overlay-title');
   if (!titleEl) return;
-  titleEl.textContent = `Document Audit (${remainingCount} ${
-    remainingCount === 1 ? 'issue' : 'issues'
-  })`;
+  titleEl.textContent = l10n.t(
+    remainingCount === 1 ? 'Document Audit ({0} issue)' : 'Document Audit ({0} issues)',
+    remainingCount
+  );
 }

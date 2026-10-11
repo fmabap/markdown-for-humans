@@ -8,6 +8,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { NodeView } from '@tiptap/pm/view';
 import { parseFenceInfo } from '../highlighting/fenceInfo';
 import { resolveGrammar } from '../highlighting/languageRegistry';
+import * as l10n from '../l10n';
 
 const COPY_FEEDBACK_MS = 1500;
 
@@ -97,8 +98,8 @@ export function createCodeBlockCopyNodeView(
   button.className = 'code-block-copy-button';
   button.contentEditable = 'false';
   button.setAttribute('contenteditable', 'false');
-  button.title = 'Copy code block';
-  button.setAttribute('aria-label', 'Copy code block');
+  button.title = l10n.t('Copy code block');
+  button.setAttribute('aria-label', l10n.t('Copy code block'));
 
   const icon = document.createElement('span');
   icon.className = 'codicon codicon-copy';
@@ -117,8 +118,11 @@ export function createCodeBlockCopyNodeView(
     icon.classList.toggle('codicon-copy', !copied);
     icon.classList.toggle('codicon-check', copied);
     tooltip.classList.toggle('visible', copied);
-    tooltip.textContent = copied ? 'Copied!' : '';
-    button.setAttribute('aria-label', copied ? 'Code block copied' : 'Copy code block');
+    tooltip.textContent = copied ? l10n.t('Copied!') : '';
+    button.setAttribute(
+      'aria-label',
+      copied ? l10n.t('Code block copied') : l10n.t('Copy code block')
+    );
   };
 
   button.addEventListener('mousedown', event => {
@@ -139,8 +143,8 @@ export function createCodeBlockCopyNodeView(
           button.classList.remove('is-copied');
           icon.className = 'codicon codicon-copy';
           tooltip.classList.add('visible', 'is-error');
-          tooltip.textContent = 'Copy failed';
-          button.setAttribute('aria-label', 'Could not copy code block');
+          tooltip.textContent = l10n.t('Copy failed');
+          button.setAttribute('aria-label', l10n.t('Could not copy code block'));
         }
 
         if (feedbackTimer !== null) {

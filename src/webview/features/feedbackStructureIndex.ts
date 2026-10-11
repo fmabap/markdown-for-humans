@@ -3,6 +3,7 @@
  * space. Nested scopes represent rendered text, never invented source slices.
  */
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import * as l10n from '../l10n';
 
 export interface FeedbackStructureScope {
   readonly from: number;
@@ -41,18 +42,19 @@ const textContainers = new Set([
   'text',
   'hardBreak',
 ]);
-const labels: Record<string, string> = {
-  paragraph: 'Whole paragraph',
-  heading: 'Whole heading',
-  listItem: 'Item and children',
-  taskItem: 'Task and children',
-  bulletList: 'Whole bullet list',
-  orderedList: 'Whole numbered list',
-  taskList: 'Whole task list',
-  blockquote: 'Whole block quote',
-  githubAlert: 'Whole alert',
-  codeBlock: 'Whole code block',
-  table: 'Whole table',
+// Looked up on each use so the label follows the loaded translations.
+const labels: Record<string, () => string> = {
+  paragraph: () => l10n.t('Whole paragraph'),
+  heading: () => l10n.t('Whole heading'),
+  listItem: () => l10n.t('Item and children'),
+  taskItem: () => l10n.t('Task and children'),
+  bulletList: () => l10n.t('Whole bullet list'),
+  orderedList: () => l10n.t('Whole numbered list'),
+  taskList: () => l10n.t('Whole task list'),
+  blockquote: () => l10n.t('Whole block quote'),
+  githubAlert: () => l10n.t('Whole alert'),
+  codeBlock: () => l10n.t('Whole code block'),
+  table: () => l10n.t('Whole table'),
 };
 
 /** Build once per immutable ProseMirror document, with no per-hit subtree walks. */
@@ -119,8 +121,12 @@ export function createFeedbackStructureIndex(doc: ProseMirrorNode): FeedbackStru
       wholeBlock,
       section,
       label: section
-        ? `Section: ${entry.node.textBetween(0, Math.min(entry.node.content.size, 120)).trim() || 'Untitled section'}`
-        : (labels[entry.node.type.name] ?? 'Whole block'),
+        ? l10n.t(
+            'Section: {0}',
+            entry.node.textBetween(0, Math.min(entry.node.content.size, 120)).trim() ||
+              l10n.t('Untitled section')
+          )
+        : (labels[entry.node.type.name]?.() ?? l10n.t('Whole block')),
     };
   };
   const entryAt = (position: number): Entry | null => {
@@ -164,8 +170,13 @@ export function createFeedbackStructureIndex(doc: ProseMirrorNode): FeedbackStru
       if (entry?.node.type.name === 'heading')
         return candidates.find(candidate => candidate.section) ?? candidates[0] ?? null;
       // Clicking prose in a list targets its item, including descendants.
+      // The label is translated, so the item scope is found by its node type.
       return (
-        candidates.find(candidate => /^(Item|Task) and children$/.test(candidate.label)) ??
+        candidates.find(
+          candidate =>
+            !candidate.section &&
+            ['listItem', 'taskItem'].includes(entries.get(candidate.from)?.node.type.name ?? '')
+        ) ??
         candidates[0] ??
         null
       );

@@ -11,6 +11,7 @@ import type { Editor } from '@tiptap/core';
 import { createFeedbackSectionIndex } from './feedbackSectionIndex';
 import { feedbackFocusForMappedBlock } from './feedbackRenderedRange';
 import type { FeedbackTargetPresentationReason } from './feedbackTargetPresentation';
+import * as l10n from '../l10n';
 
 export interface FeedbackBlockActionAnchor {
   ordinal: number;
@@ -252,7 +253,7 @@ export function createFeedbackBlockActionView(options: {
   const button = container.ownerDocument.createElement('button');
   button.className = 'feedback-block-action';
   button.type = 'button';
-  button.title = 'Add feedback';
+  button.title = l10n.t('Add feedback');
   button.hidden = true;
   button.setAttribute('data-feedback-block-action', '');
   const icon = container.ownerDocument.createElement('span');
@@ -395,12 +396,15 @@ export function createFeedbackBlockActionView(options: {
       button.setAttribute(
         'aria-label',
         input.target.structuralScope
-          ? `Add feedback to ${input.target.structuralScope.label}`
+          ? l10n.t('Add feedback to {0}', input.target.structuralScope.label)
           : input.target.sectionLabel
-            ? `Add feedback to section ${input.target.sectionLabel}, including subsections`
+            ? l10n.t(
+                'Add feedback to section {0}, including subsections',
+                input.target.sectionLabel
+              )
             : input.isTable
-              ? 'Add feedback to this table'
-              : 'Add feedback to this block'
+              ? l10n.t('Add feedback to this table')
+              : l10n.t('Add feedback to this block')
       );
       if (needsPosition) position();
     },

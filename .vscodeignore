@@ -24,6 +24,10 @@ TERMS_OF_USE.md
 CLAUDE.md
 TODOs.md
 
+# Translations: ship finished bundles only
+l10n/drafts/**
+l10n/README.md
+
 # Development files
 src/**
 scripts/**

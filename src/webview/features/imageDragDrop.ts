@@ -35,6 +35,7 @@ import {
   createPendingImageCompletionClient,
   type PendingImageCompletionClient,
 } from './pendingImageCompletionClient';
+import * as l10n from '../l10n';
 
 /**
  * Track images currently being saved to prevent document sync race conditions
@@ -70,7 +71,10 @@ function showPendingImageCapacityWarning(vscodeApi: VsCodeApi): void {
   try {
     vscodeApi.postMessage({
       type: 'showError',
-      message: `Up to ${MAX_PENDING_IMAGE_SAVES} images can be saved at once. Wait for current image saves to finish, then try again.`,
+      message: l10n.t(
+        'Up to {0} images can be saved at once. Wait for current image saves to finish, then try again.',
+        MAX_PENDING_IMAGE_SAVES
+      ),
     });
   } catch (error) {
     console.error('[MD4H] Failed to show pending image capacity warning:', error);
@@ -855,7 +859,10 @@ export async function insertImage(
       releasePendingImageSave(placeholderId);
       vscodeApi.postMessage({
         type: 'showError',
-        message: `Cannot insert "${file.name}". Select a supported image or a valid SVG no larger than 64 MiB.`,
+        message: l10n.t(
+          'Cannot insert "{0}". Select a supported image or a valid SVG no larger than 64 MiB.',
+          file.name
+        ),
       });
       return;
     }

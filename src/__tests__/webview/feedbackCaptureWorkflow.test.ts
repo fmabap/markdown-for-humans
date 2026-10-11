@@ -20,6 +20,7 @@ import {
   createFeedbackDraftSurfaceGate,
   type FeedbackReviewController,
 } from '../../webview/features/feedbackReview';
+import * as l10n from '../../webview/l10n';
 
 describe('keyboard Feedback block selector', () => {
   function domRectangle(left: number, top: number, right: number, bottom: number): DOMRect {
@@ -1952,5 +1953,106 @@ describe('keyboard Feedback block selector', () => {
         expect.any(RangeError)
       );
     });
+  });
+});
+
+describe('Feedback capture workflow localization', () => {
+  const session = {
+    sessionId: 'session-1',
+    source: 'docs/guide.md',
+    sourceSha256: 'a'.repeat(64),
+    round: '20260821T093000Z-k4p9',
+    anchors: [
+      { ordinal: 0, startLine: 1, endLine: 2 },
+      { ordinal: 1, startLine: 3, endLine: 4 },
+    ],
+    items: [],
+  };
+  const fixture = (hasSession = true) => {
+    const editorDom = document.createElement('div');
+    editorDom.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, right: 600, bottom: 400, width: 600, height: 400 }) as DOMRect;
+    document.body.append(editorDom);
+    const editor = {
+      state: { selection: { empty: true, from: 1, to: 1 } },
+      view: { dom: editorDom },
+    } as unknown as Editor;
+    const review = {
+      getSession: () => (hasSession ? session : null),
+      isWritable: () => true,
+    } as unknown as FeedbackReviewController;
+    return { editor, review, rasterize: jest.fn() };
+  };
+  afterEach(() => {
+    window.dispatchEvent(new CustomEvent('feedbackSessionEnded'));
+    document.body.innerHTML = '';
+    document.body.className = '';
+    document.body.removeAttribute('data-feedback-capture-state');
+    l10n.resetL10n();
+  });
+
+  it('shows English when no bundle is loaded', () => {
+    captureSelectedFeedbackBlocks(fixture());
+    const dialog = document.querySelector<HTMLFormElement>('.feedback-block-selector')!;
+    expect(dialog.querySelector('h2')?.textContent).toBe('Capture block range');
+    expect(dialog.querySelector('option')?.textContent).toBe('Block 1, lines 1-2');
+  });
+
+  it('translates the block selector, block numbers and line ranges included', () => {
+    // Leaves out "Last block" on purpose, to exercise the fallback to English.
+    l10n.configureL10n({
+      'Capture block range': 'Capturer une plage de blocs',
+      'First block': 'Premier bloc',
+      'Block {0}, lines {1}-{2}': 'Bloc {0}, lignes {1}-{2}',
+      'Capture blocks': 'Capturer les blocs',
+    });
+    captureSelectedFeedbackBlocks(fixture());
+    const dialog = document.querySelector<HTMLFormElement>('.feedback-block-selector')!;
+    const labels = Array.from(
+      dialog.querySelectorAll('label'),
+      label => label.firstChild?.textContent
+    );
+
+    expect(dialog.querySelector('h2')?.textContent).toBe('Capturer une plage de blocs');
+    expect(labels).toEqual(['Premier bloc', 'Last block']);
+    expect(Array.from(dialog.querySelectorAll('select')[0].options, option => option.text)).toEqual(
+      ['Bloc 1, lignes 1-2', 'Bloc 2, lignes 3-4']
+    );
+    expect(dialog.querySelector('button[type="submit"]')?.textContent).toBe('Capturer les blocs');
+  });
+
+  it('translates the area capture surface and the error raised without a session', () => {
+    l10n.configureL10n({
+      'Capture area for feedback': 'Capturer une zone à commenter',
+      'Capture area ready. Drag over the visible document area. Press Escape to cancel.':
+        'Capture prête. Faites glisser sur la zone visible. Appuyez sur Escape pour annuler.',
+      Retry: 'Réessayer',
+      'Start Feedback and keep the rendered document visible before capturing.':
+        'Démarrez Feedback et gardez le document visible avant de capturer.',
+    });
+    const messages: (string | undefined)[] = [];
+    const onLocalError = (event: Event): void => {
+      messages.push((event as CustomEvent<{ message?: string }>).detail.message);
+    };
+    window.addEventListener('feedbackLocalError', onLocalError);
+    try {
+      startFeedbackAreaCapture(fixture(false));
+    } finally {
+      window.removeEventListener('feedbackLocalError', onLocalError);
+    }
+    expect(messages).toEqual([
+      'Démarrez Feedback et gardez le document visible avant de capturer.',
+    ]);
+
+    startFeedbackAreaCapture(fixture());
+    const overlay = document.querySelector<HTMLElement>('.feedback-area-capture')!;
+    expect(overlay.getAttribute('aria-label')).toBe('Capturer une zone à commenter');
+    expect(overlay.querySelector('.feedback-capture-instruction')?.textContent).toBe(
+      'Capture prête. Faites glisser sur la zone visible. Appuyez sur Escape pour annuler.'
+    );
+    expect(Array.from(overlay.querySelectorAll('button'), button => button.textContent)).toEqual([
+      'Réessayer',
+      'Cancel',
+    ]);
   });
 });

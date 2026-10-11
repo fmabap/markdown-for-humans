@@ -7,7 +7,12 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import { CustomImage } from '../../webview/extensions/customImage';
 import { PreservedMarkdownLiteral } from '../../webview/extensions/preservedMarkdownLiteral';
-import { runAudit, handleAuditPickFileResult } from '../../webview/features/auditDocument';
+import {
+  runAudit,
+  handleAuditPickFileResult,
+  handleAuditUrlCheckResult,
+} from '../../webview/features/auditDocument';
+import * as l10n from '../../webview/l10n';
 import { installBlankLineLexerNormalizer } from '../../webview/utils/markedLexerNormalizer';
 
 describe('Audit Document Feature', () => {
@@ -321,5 +326,75 @@ describe('Audit Document Feature', () => {
 
     await pickPromise;
     expect(resolvedPath).toBe('./images/new-image.png');
+  });
+
+  describe('localization', () => {
+    // Leaves out "Link is empty." on purpose, to exercise the fallback to English.
+    const sampleBundle: Record<string, string> = {
+      'Image has no source path.': '图片没有源路径。',
+      'Image file not found: {0}': '找不到图片文件: {0}',
+      'Heading anchor not found: #{0}': '找不到标题锚点: #{0}',
+      'Broken link URL: {0}': '链接地址已失效: {0}',
+    };
+
+    afterEach(() => {
+      l10n.resetL10n();
+    });
+
+    it('shows English when no bundle is loaded', async () => {
+      editor.commands.setContent('![]()', { contentType: 'markdown' });
+
+      const results = await runAudit(editor);
+
+      expect(results[0].message).toBe('Image has no source path.');
+    });
+
+    it('translates a message without arguments', async () => {
+      l10n.configureL10n(sampleBundle);
+      editor.commands.setContent('![]()', { contentType: 'markdown' });
+
+      const results = await runAudit(editor);
+
+      expect(results[0].message).toBe('图片没有源路径。');
+    });
+
+    it('translates a message that carries the target', async () => {
+      l10n.configureL10n(sampleBundle);
+      editor.commands.setContent('![alt text](missing-image.png)', { contentType: 'markdown' });
+      mockVscodeApi.postMessage.mockImplementation((message: any) => {
+        if (message.type === 'auditCheckFile') {
+          setTimeout(() => {
+            import('../../webview/features/auditDocument').then(({ handleAuditCheckResult }) => {
+              handleAuditCheckResult(message.requestId, false);
+            });
+          }, 10);
+        }
+      });
+
+      const results = await runAudit(editor);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].message).toBe('找不到图片文件: missing-image.png');
+      expect(results[0].target).toBe('missing-image.png');
+    });
+
+    it('translates a heading anchor message and a broken URL message', async () => {
+      l10n.configureL10n(sampleBundle);
+      editor.commands.setContent('[jump](#missing-section) and [web](https://example.com/gone)', {
+        contentType: 'markdown',
+      });
+      mockVscodeApi.postMessage.mockImplementation((message: any) => {
+        if (message.type === 'auditCheckUrl') {
+          setTimeout(() => handleAuditUrlCheckResult(message.requestId, false), 10);
+        }
+      });
+
+      const results = await runAudit(editor);
+
+      expect(results.map(issue => issue.message).sort()).toEqual([
+        '找不到标题锚点: #missing-section',
+        '链接地址已失效: https://example.com/gone',
+      ]);
+    });
   });
 });

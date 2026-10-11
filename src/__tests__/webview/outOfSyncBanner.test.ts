@@ -9,6 +9,7 @@
 import { readFileSync } from 'fs';
 import * as path from 'path';
 import { hideOutOfSyncBanner, showOutOfSyncBanner } from '../../webview/features/outOfSyncBanner';
+import * as l10n from '../../webview/l10n';
 
 describe('out-of-sync banner', () => {
   afterEach(() => {
@@ -68,5 +69,30 @@ describe('out-of-sync banner', () => {
     );
     // The Find panel is 46 CSS px tall (see the matching saved-draft banner test).
     expect(bannerTop).toBeGreaterThanOrEqual(findTop + 46);
+  });
+});
+
+describe('out-of-sync banner localization', () => {
+  afterEach(() => {
+    hideOutOfSyncBanner();
+    document.body.innerHTML = '';
+    l10n.resetL10n();
+  });
+
+  it('shows the translated message and reload action', () => {
+    l10n.configureL10n({
+      'This editor is out of sync with the file, and its edits are not being saved.':
+        '此编辑器与文件不同步，其编辑内容未被保存。',
+      'Reload editor': '重新加载编辑器',
+    });
+
+    showOutOfSyncBanner(jest.fn());
+
+    expect(document.querySelector('.out-of-sync-banner-message')?.textContent).toBe(
+      '此编辑器与文件不同步，其编辑内容未被保存。'
+    );
+    expect(document.querySelector('.out-of-sync-banner-action')?.textContent).toBe(
+      '重新加载编辑器'
+    );
   });
 });

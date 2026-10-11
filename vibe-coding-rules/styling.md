@@ -70,6 +70,47 @@ Prefer shared variable-based styles. Use theme classes for deliberate visual
 differences, such as contrast boundaries, without assuming a high-contrast theme
 has a dark background.
 
+### Reader Typography
+
+Body text typography is the reader's to change (`markdownForHumans.font.*`:
+family, weight, line height, letter spacing, word spacing). The webview sets a
+`--md-*` custom property on `<html>` only while a setting differs from its
+default; `editor.css` reads it with the built-in value as the fallback.
+
+```css
+/* Good: the reader's value when set, the built-in look otherwise */
+.markdown-editor p {
+  line-height: var(--md-line-height, 1.58);
+}
+
+/* Bad: a fixed body value the reader cannot change */
+.markdown-editor p {
+  line-height: 1.58;
+}
+```
+
+| Property | Fallback | Set on |
+|----------|----------|--------|
+| `--md-font-family` | `var(--vscode-font-family)` | `.markdown-editor` |
+| `--md-font-weight` | `var(--vscode-font-weight)` | `.markdown-editor` |
+| `--md-line-height` | `1.58` | root, `p`, `li`, `blockquote`, `.github-alert` |
+| `--md-letter-spacing` | `-0.003em` | `.markdown-editor` |
+| `--md-word-spacing` | `normal` | `.markdown-editor` |
+| `--md-code-text-spacing` | `inherit` | `pre`, `code`, `.katex`, `.md4h-html-comment` |
+| `--md-editor-font-size` | `var(--vscode-editor-font-size, 14px)` | `--md-base-size` and zoom |
+
+- New prose elements inherit the family and spacing from `.markdown-editor`. Use
+  `var(--md-line-height, 1.58)` for a body line height; never a literal.
+- Elements with their own metrics declare them and stay out: code and comment
+  markers (monospace, standard weight), KaTeX, and Mermaid, whose labels are
+  measured before the SVG enters the editor.
+- User values never go into a stylesheet or markup. They pass through
+  `src/shared/typographySettings.ts`, which clamps numbers and rewrites a font
+  list as quoted names, and are applied with `style.setProperty` in
+  `src/webview/utils/typographyStyles.ts`.
+- `typographyStyles.test.ts` holds the fallbacks to the values the editor had
+  before the settings existed. Changing a fallback changes the look for everyone.
+
 ### Code Blocks and Syntax Tokens
 
 `package.json` contributes eight `markdownForHumans.code*` color IDs: `codeKeyword`,
@@ -370,6 +411,7 @@ Use `:not()` to create conditional styles:
 - [ ] Transitions smooth, reduced motion respected
 - [ ] No redundant borders/outlines
 - [ ] CSS variables only (no hard-coded colors)
+- [ ] Body typography through `--md-*` fallbacks; code, math and diagrams unaffected by `markdownForHumans.font.*`
 - [ ] Manual read test (3000+ words, 10+ minutes)
 
 ---

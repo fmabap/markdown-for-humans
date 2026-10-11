@@ -8,6 +8,8 @@
  * by native browser modal dialogs, so this surface must remain DOM-based.
  */
 
+import * as l10n from '../l10n';
+
 export interface FeedbackDiscardDialogOptions {
   /** Explains exactly which unfinished work will be lost. */
   description: string;
@@ -74,7 +76,7 @@ export function createFeedbackDiscardDialog(
   const title = document.createElement('h2');
   title.id = titleId;
   title.className = 'feedback-discard-title';
-  title.textContent = options.title ?? 'Discard unfinished feedback?';
+  title.textContent = options.title ?? l10n.t('Discard unfinished feedback?');
   const description = document.createElement('p');
   description.id = descriptionId;
   description.className = 'feedback-discard-description';
@@ -84,12 +86,12 @@ export function createFeedbackDiscardDialog(
   const keep = document.createElement('button');
   keep.type = 'button';
   keep.className = 'feedback-secondary-button';
-  keep.textContent = options.keepLabel ?? 'Keep editing';
+  keep.textContent = options.keepLabel ?? l10n.t('Keep editing');
   keep.setAttribute('data-feedback-discard-keep', '');
   const confirm = document.createElement('button');
   confirm.type = 'button';
   confirm.className = 'feedback-discard-confirm';
-  confirm.textContent = options.confirmLabel ?? 'Discard feedback';
+  confirm.textContent = options.confirmLabel ?? l10n.t('Discard feedback');
   confirm.setAttribute('data-feedback-discard-confirm', '');
   actions.append(keep, confirm);
   panel.append(title, description, actions);

@@ -21,6 +21,7 @@ import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { JSONContent, MarkdownRendererHelpers, RenderContext } from '@tiptap/core';
 import { createPendingImageDestination } from '../../shared/pendingImageProtocol';
+import * as l10n from '../l10n';
 import {
   createImageMenuButton,
   createImageMenu,
@@ -301,7 +302,10 @@ export const CustomImage = Image.extend({
         if (destroyed) return;
         isImageLoaded = false;
         dom.removeAttribute('data-loading');
-        errorLabel.textContent = `Unable to load image: ${node.attrs['markdown-src'] || node.attrs.src || ''}`;
+        errorLabel.textContent = l10n.t(
+          'Unable to load image: {0}',
+          node.attrs['markdown-src'] || node.attrs.src || ''
+        );
         errorLabel.hidden = false;
         wrapper.classList.add('image-load-failed');
       };
@@ -408,7 +412,7 @@ export const CustomImage = Image.extend({
 
       // Create three-dots menu button (shown on hover)
       const menuButton = createImageMenuButton();
-      menuButton.setAttribute('title', 'Image options');
+      menuButton.setAttribute('title', l10n.t('Image options'));
 
       // Check if this is an external image (hide menu for external images)
       const imageSrc = node.attrs['markdown-src'] || node.attrs.src;

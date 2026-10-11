@@ -10,6 +10,7 @@ import {
   createFeedbackBlockElementIndex,
   resolveFeedbackBlockActionTarget,
 } from '../../webview/features/feedbackBlockAction';
+import * as l10n from '../../webview/l10n';
 
 function rect(left: number, top: number, width: number, height: number): DOMRect {
   return {
@@ -461,5 +462,47 @@ describe('Feedback block action', () => {
       visibleCoordinates: { left: '36px', top: '102px' },
       activationCount: 1,
     });
+  });
+});
+
+describe('Feedback block action localization', () => {
+  const target = { startOrdinal: 0, endOrdinal: 0, focus: 'Alpha beta', startLine: 1, endLine: 1 };
+  const showAction = (extra: { sectionLabel?: string } = {}): HTMLButtonElement => {
+    const editor = createEditorFixture();
+    const container = document.querySelector('#editor') as HTMLElement;
+    const view = createFeedbackBlockActionView({ container, onActivate: jest.fn() });
+    view.show({
+      target: { ...target, ...extra },
+      element: editor.view.dom.children[0] as HTMLElement,
+      isTable: false,
+    });
+    return view.element;
+  };
+  afterEach(() => {
+    document.body.innerHTML = '';
+    l10n.resetL10n();
+  });
+
+  it('shows English when no bundle is loaded', () => {
+    const button = showAction({ sectionLabel: 'Mocks' });
+    expect(button.title).toBe('Add feedback');
+    expect(button.getAttribute('aria-label')).toBe(
+      'Add feedback to section Mocks, including subsections'
+    );
+  });
+
+  it('translates the tooltip and the accessible name, heading text included', () => {
+    l10n.configureL10n({
+      'Add feedback': 'Ajouter un commentaire',
+      'Add feedback to this block': 'Ajouter un commentaire à ce bloc',
+      'Add feedback to section {0}, including subsections':
+        'Ajouter un commentaire à la section {0}, sous-sections comprises',
+    });
+    const block = showAction();
+    expect(block.title).toBe('Ajouter un commentaire');
+    expect(block.getAttribute('aria-label')).toBe('Ajouter un commentaire à ce bloc');
+    expect(showAction({ sectionLabel: 'Mocks' }).getAttribute('aria-label')).toBe(
+      'Ajouter un commentaire à la section Mocks, sous-sections comprises'
+    );
   });
 });

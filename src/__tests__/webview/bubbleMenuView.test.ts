@@ -114,6 +114,61 @@ describe('BubbleMenuView', () => {
     } as unknown as Editor;
   };
 
+  describe('localization', () => {
+    const iconOf = (toolbar: HTMLElement, ariaLabel: string): HTMLElement | null => {
+      const button = Array.from(toolbar.querySelectorAll('button')).find(
+        candidate => candidate.getAttribute('aria-label') === ariaLabel
+      );
+      return button?.querySelector<HTMLElement>('.toolbar-icon') ?? null;
+    };
+
+    it('keeps the icon-font glyph for Bold while the language keeps the letter B', () => {
+      const icon = iconOf(createFormattingToolbar(createMockEditor()), 'Toggle bold (Ctrl+B)');
+
+      expect(icon?.classList.contains('codicon-bold')).toBe(true);
+      expect(icon?.getAttribute('data-fallback')).toBe('B');
+    });
+
+    it('shows translated tooltips, menu labels and the reason a button is disabled', async () => {
+      const l10n = await import('../../webview/l10n');
+      l10n.configureL10n({
+        'Toggle bold ({0}+B)': 'Fett umschalten ({0}+B)',
+        'Insert Table': 'Tabelle einfügen',
+        '{0} (Click in document to edit)': '{0} (Zum Bearbeiten in das Dokument klicken)',
+      });
+      const toolbar = createFormattingToolbar(createMockEditor());
+      document.body.appendChild(toolbar);
+      updateToolbarStates();
+
+      const bold = Array.from(toolbar.querySelectorAll('button')).find(
+        candidate => candidate.getAttribute('aria-label') === 'Fett umschalten (Ctrl+B)'
+      );
+      expect(bold?.title).toBe('Fett umschalten (Ctrl+B) (Zum Bearbeiten in das Dokument klicken)');
+      expect(toolbar.querySelector('[aria-label="Tabelle einfügen"]')).not.toBeNull();
+      // Not in the bundle: falls back to English.
+      expect(toolbar.querySelector('[aria-label="Toggle strikethrough"]')).not.toBeNull();
+    });
+
+    it('renders the letter a language uses for Bold instead of the B glyph', async () => {
+      const l10n = await import('../../webview/l10n');
+      l10n.configureL10n({ 'B/Bold button letter': 'F', 'H1/Heading 1 button text': 'Ü1' });
+      const toolbar = createFormattingToolbar(createMockEditor());
+
+      const bold = iconOf(toolbar, 'Toggle bold (Ctrl+B)');
+      expect(bold?.textContent).toBe('F');
+      expect(bold?.classList.contains('codicon-bold')).toBe(false);
+      // A plain letter would not say "bold", so it is drawn in the style it stands for.
+      expect(bold?.classList.contains('toolbar-letter-bold')).toBe(true);
+      expect(iconOf(toolbar, 'Toggle Heading 1')?.textContent).toBe('Ü1');
+      // Heading text is not a styled letter.
+      expect(iconOf(toolbar, 'Toggle Heading 1')?.className).not.toContain('toolbar-letter-');
+      // Italic was not given another letter, so it keeps its glyph.
+      expect(iconOf(toolbar, 'Toggle italic (Ctrl+I)')?.classList.contains('codicon-italic')).toBe(
+        true
+      );
+    });
+  });
+
   describe('createFormattingToolbar', () => {
     it('creates a toolbar element with correct class', () => {
       const editor = createMockEditor();

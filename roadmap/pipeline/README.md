@@ -19,3 +19,5 @@ Agents: boot from this allowlist. Shipped mega-docs live under `roadmap/shipped/
 - `task-p1-wikilinks.md`
 - `task-pdf-advanced-export.md`
 - `task-soft-breaks.md`: TODO, CommonMark soft breaks (#69); prior work on branch `cursor/soft-breaks-retest-ad7a`
+- `task-localization.md`: merged in PR 155, five languages (#55, #77). TODO: release, issue replies, listing text; see its section 9
+- `task-cjk-word-count.md`: merged in PR 155, word count for Chinese and Japanese text. Moves to `shipped/` with the release

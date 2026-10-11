@@ -2779,6 +2779,14 @@ describe('MarkdownEditorProvider undo/redo safety', () => {
       paragraphSpacingBefore: 0,
       paragraphSpacingAfter: 0,
       zoom: 100,
+      typography: {
+        fontFamily: null,
+        fontWeight: null,
+        fontSize: null,
+        lineHeight: null,
+        letterSpacing: null,
+        wordSpacing: null,
+      },
       enableMath: true,
       formattingShortcutsEnabled: true,
     });
@@ -2870,6 +2878,14 @@ describe('MarkdownEditorProvider undo/redo safety', () => {
       paragraphSpacingBefore: 0,
       paragraphSpacingAfter: 0,
       zoom: 100,
+      typography: {
+        fontFamily: null,
+        fontWeight: null,
+        fontSize: null,
+        lineHeight: null,
+        letterSpacing: null,
+        wordSpacing: null,
+      },
       enableMath: true,
       formattingShortcutsEnabled: true,
     });

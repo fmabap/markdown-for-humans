@@ -21,6 +21,7 @@ import {
   type CaptureBlock,
   type CaptureRectangle,
 } from '../../webview/features/feedbackCapture';
+import * as l10n from '../../webview/l10n';
 
 function domRect(left: number, top: number, width: number, height: number): DOMRect {
   return {
@@ -1366,5 +1367,95 @@ describe('feedback annotation modal', () => {
     expect(await controller.submit()).toBe(false);
     expect(onAdd).not.toHaveBeenCalled();
     expect(onCancel).not.toHaveBeenCalled();
+  });
+});
+
+describe('feedback annotation modal localization', () => {
+  let controller: ReturnType<typeof createFeedbackAnnotationModal> | undefined;
+  const openModal = (): HTMLElement => {
+    controller = createFeedbackAnnotationModal({
+      image: { dataUrl: 'data:image/png;base64,base', width: 800, height: 600 },
+      onAdd: jest.fn(),
+      onRetake: jest.fn(),
+      onCancel: jest.fn(),
+    });
+    return controller.element;
+  };
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+  afterEach(() => {
+    controller?.destroy();
+    l10n.resetL10n();
+  });
+
+  it('shows English when no bundle is loaded', () => {
+    const dialog = openModal();
+    expect(dialog.querySelector('h2')?.textContent).toBe('Annotate screenshot');
+    expect(dialog.querySelector('[data-feedback-color="coral"]')?.getAttribute('aria-label')).toBe(
+      'Coral annotation color'
+    );
+    expect(dialog.querySelector('[data-feedback-tool="pen"]')?.textContent).toBe('Pen');
+  });
+
+  it('translates the dialog, its tools and the colour names', () => {
+    // Leaves out "Blue" on purpose, to exercise the fallback to English.
+    l10n.configureL10n({
+      'Annotate screenshot': "Annoter la capture d'écran",
+      'Pen tool': 'Outil stylo',
+      Pen: 'Stylo',
+      Coral: 'Corail',
+      '{0} annotation color': "Couleur d'annotation : {0}",
+      Cancel: 'Annuler',
+      Discard: 'Abandonner',
+      'Discard screenshot feedback': "Abandonner le commentaire de capture d'écran",
+      'Describe what should change.': 'Décrivez ce qui doit changer.',
+    });
+    const dialog = openModal();
+    const pen = dialog.querySelector<HTMLButtonElement>('[data-feedback-tool="pen"]');
+    const coral = dialog.querySelector<HTMLButtonElement>('[data-feedback-color="coral"]');
+    const blue = dialog.querySelector<HTMLButtonElement>('[data-feedback-color="blue"]');
+    const cancel = dialog.querySelector<HTMLButtonElement>('[data-feedback-action="cancel"]');
+    const input = dialog.querySelector<HTMLTextAreaElement>('textarea')!;
+
+    expect(dialog.querySelector('h2')?.textContent).toBe("Annoter la capture d'écran");
+    expect(pen?.getAttribute('aria-label')).toBe('Outil stylo');
+    expect(pen?.textContent).toBe('Stylo');
+    expect(coral?.title).toBe('Corail');
+    expect(coral?.getAttribute('aria-label')).toBe("Couleur d'annotation : Corail");
+    expect(blue?.getAttribute('aria-label')).toBe("Couleur d'annotation : Blue");
+    expect(cancel?.textContent).toBe('Annuler');
+
+    input.value = 'Draft';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(cancel?.textContent).toBe('Abandonner');
+    expect(cancel?.getAttribute('aria-label')).toBe("Abandonner le commentaire de capture d'écran");
+  });
+
+  it('translates the validation message and the capture error text', async () => {
+    l10n.configureL10n({
+      'Describe what should change.': 'Décrivez ce qui doit changer.',
+      'Select a visible part of the rendered Markdown.':
+        'Sélectionnez une partie visible du Markdown affiché.',
+    });
+    const dialog = openModal();
+
+    expect(await controller?.submit()).toBe(false);
+    expect(dialog.querySelector('.feedback-annotation-validation')?.textContent).toBe(
+      'Décrivez ce qui doit changer.'
+    );
+    await expect(
+      captureVisibleArea({
+        root: document.createElement('main'),
+        start: { x: 0, y: 0 },
+        end: { x: 0, y: 0 },
+        viewport: captureRect(0, 0, 300, 200),
+        blocks: [],
+        rasterize: jest.fn(),
+      })
+    ).rejects.toMatchObject({
+      code: 'MD4H-FB-ANCHOR-001',
+      message: 'Sélectionnez une partie visible du Markdown affiché.',
+    });
   });
 });

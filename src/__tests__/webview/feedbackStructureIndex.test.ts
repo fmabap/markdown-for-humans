@@ -2,6 +2,7 @@
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { createFeedbackStructureIndex } from '../../webview/features/feedbackStructureIndex';
+import * as l10n from '../../webview/l10n';
 
 describe('frozen Feedback structure index', () => {
   let editor: Editor;
@@ -70,5 +71,40 @@ describe('frozen Feedback structure index', () => {
     for (let count = 0; count < 1000; count++) index.choices(doc.content.size - 2);
     expect(rootWalk).not.toHaveBeenCalled();
     expect(childWalk).not.toHaveBeenCalled();
+  });
+});
+
+describe('Feedback structure index localization', () => {
+  let editor: Editor;
+  afterEach(() => {
+    editor?.destroy();
+    l10n.resetL10n();
+  });
+  function setup(content: string) {
+    editor = new Editor({ extensions: [StarterKit], content });
+    return createFeedbackStructureIndex(editor.state.doc);
+  }
+  it('translates scope labels and still prefers the list item scope', () => {
+    // Leaves out "Whole paragraph" on purpose, to exercise the fallback to English.
+    l10n.configureL10n({
+      'Item and children': 'Élément et enfants',
+      'Whole bullet list': 'Toute la liste à puces',
+    });
+    const index = setup('<ul><li><p>Parent</p><ul><li><p>Child</p></li></ul></li></ul>');
+    expect(index.atPosition(4)?.label).toBe('Élément et enfants');
+    expect(index.choices(4).map(choice => choice.label)).toEqual([
+      'Whole paragraph',
+      'Élément et enfants',
+      'Toute la liste à puces',
+    ]);
+  });
+  it('translates the section label around the heading text', () => {
+    l10n.configureL10n({
+      'Section: {0}': 'Section : {0}',
+      'Untitled section': 'Section sans titre',
+    });
+    const index = setup('<blockquote><h2>Mocks</h2><p>Body</p><h2></h2><p>Tail</p></blockquote>');
+    const labels = [3, 15].map(position => index.atPosition(position)?.label);
+    expect(labels).toEqual(['Section : Mocks', 'Section : Section sans titre']);
   });
 });

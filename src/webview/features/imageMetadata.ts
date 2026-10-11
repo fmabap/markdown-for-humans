@@ -14,6 +14,7 @@
  */
 
 import { isSvgImageSource } from '../../shared/imageSource';
+import * as l10n from '../l10n';
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -123,12 +124,12 @@ export function updateImageMetadataDimensions(
  */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
-    return `${bytes} B`;
+    return l10n.t('{0} B', bytes);
   }
   if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
+    return l10n.t('{0} KB', l10n.formatNumber(bytes / 1024, 1));
   }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return l10n.t('{0} MB', l10n.formatNumber(bytes / (1024 * 1024), 1));
 }
 
 /**
@@ -141,17 +142,17 @@ export function formatDate(timestamp: number): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) {
-    return 'Today';
+    return l10n.t('Today');
   }
   if (diffDays === 1) {
-    return 'Yesterday';
+    return l10n.t('Yesterday');
   }
   if (diffDays < 7) {
-    return `${diffDays} days ago`;
+    return l10n.t('{0} days ago', diffDays);
   }
 
-  // Format as date
-  return date.toLocaleDateString('en-US', {
+  // Format as date in the display language the host set on <html>; English when none is set
+  return date.toLocaleDateString(document.documentElement.lang || 'en-US', {
     month: 'short',
     day: 'numeric',
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
@@ -257,7 +258,7 @@ export function createMetadataFooter(
     // Show loading state
     footer.innerHTML = `
       <div class="metadata-row metadata-minimal">
-        <span class="metadata-loading">Loading metadata...</span>
+        <span class="metadata-loading">${l10n.html('Loading metadata...')}</span>
       </div>
     `;
     footer.setAttribute('data-image-size', 'medium');
@@ -272,7 +273,11 @@ export function createMetadataFooter(
   const bounds = img.getBoundingClientRect();
   // SVG has no fixed pixel resolution. Measure this occurrence, not the path cache.
   const dimensions = vector
-    ? `Vector · ${Math.round(bounds.width || img.width)}×${Math.round(bounds.height || img.height)} display px`
+    ? l10n.html(
+        'Vector · {0}×{1} display px',
+        Math.round(bounds.width || img.width),
+        Math.round(bounds.height || img.height)
+      )
     : `${metadata.dimensions.width}×${metadata.dimensions.height}`;
 
   // Build content based on size
@@ -289,11 +294,11 @@ export function createMetadataFooter(
       <div class="metadata-row metadata-primary">
         <span class="metadata-filename">${escapeMetadataText(truncate(metadata.filename, 30))}</span>
         <span class="metadata-dimensions">${dimensions}</span>
-        <span class="metadata-size">${formatFileSize(metadata.size)}</span>
+        <span class="metadata-size">${escapeMetadataText(formatFileSize(metadata.size))}</span>
       </div>
       <div class="metadata-row metadata-secondary">
         <span class="metadata-path">${escapeMetadataText(truncate(metadata.path, 40))}</span>
-        <span class="metadata-date">${formatDate(metadata.lastModified)}</span>
+        <span class="metadata-date">${escapeMetadataText(formatDate(metadata.lastModified))}</span>
       </div>
     `;
   } else {
@@ -305,13 +310,13 @@ export function createMetadataFooter(
       <div class="metadata-row">
         <span class="metadata-dimensions">${dimensions}</span>
         <span class="metadata-separator">•</span>
-        <span class="metadata-size">${formatFileSize(metadata.size)}</span>
+        <span class="metadata-size">${escapeMetadataText(formatFileSize(metadata.size))}</span>
       </div>
       <div class="metadata-row">
         <span class="metadata-path">${escapeMetadataText(metadata.path)}</span>
       </div>
       <div class="metadata-row">
-        <span class="metadata-date">Modified: ${formatDate(metadata.lastModified)}</span>
+        <span class="metadata-date">${l10n.html('Modified: {0}', formatDate(metadata.lastModified))}</span>
       </div>
     `;
   }

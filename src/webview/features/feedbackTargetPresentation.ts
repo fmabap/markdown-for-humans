@@ -19,6 +19,7 @@ import {
   fingerprintFeedbackTable,
   isFeedbackCellRectangleWithinExactLimit,
 } from './feedbackSelectionMapping';
+import * as l10n from '../l10n';
 
 export const FEEDBACK_CELL_PREVIEW_ROW_LIMIT = 4;
 export const FEEDBACK_CELL_PREVIEW_COLUMN_LIMIT = 4;
@@ -154,8 +155,8 @@ function lineCount(value: string): number {
   return normalized.length === 0 ? 0 : normalized.split('\n').length;
 }
 
-function plural(value: number, singular: string, pluralValue = `${singular}s`): string {
-  return value === 1 ? singular : pluralValue;
+function lineCountText(lines: number): string {
+  return l10n.t(lines === 1 ? '{0} line' : '{0} lines', lines);
 }
 
 function readableLanguage(value: unknown): string | null {
@@ -188,26 +189,44 @@ function readableLanguage(value: unknown): string | null {
 function codeDetail(node: ProseMirrorNode, focus: string): string {
   const language = readableLanguage(node.attrs?.language);
   const lines = lineCount(focus);
-  return [language, `${lines} ${plural(lines, 'line')}`].filter(Boolean).join(' · ');
+  if (!language) return lineCountText(lines);
+  return l10n.t(lines === 1 ? '{0} · {1} line' : '{0} · {1} lines', language, lines);
 }
 
 function readableBlockKind(node: ProseMirrorNode): string {
-  const labels: Record<string, string> = {
-    blockquote: 'block quote',
-    bulletList: 'bullet list',
-    codeBlock: 'code block',
-    githubAlert: 'alert',
-    heading: 'heading',
-    horizontalRule: 'divider',
-    image: 'image',
-    mathBlock: 'math block',
-    mermaid: 'Mermaid diagram',
-    orderedList: 'numbered list',
-    paragraph: 'paragraph',
-    table: 'table',
-    taskList: 'task list',
+  const labels: Record<string, () => string> = {
+    blockquote: () => l10n.t('block quote'),
+    bulletList: () => l10n.t('bullet list'),
+    codeBlock: () => l10n.t('code block'),
+    githubAlert: () => l10n.t('alert'),
+    heading: () => l10n.t('heading'),
+    horizontalRule: () => l10n.t('divider'),
+    image: () => l10n.t('image'),
+    mathBlock: () => l10n.t('math block'),
+    mermaid: () => l10n.t('Mermaid diagram'),
+    orderedList: () => l10n.t('numbered list'),
+    paragraph: () => l10n.t('paragraph'),
+    table: () => l10n.t('table'),
+    taskList: () => l10n.t('task list'),
   };
-  return labels[node.type.name] ?? node.type.name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return (
+    labels[node.type.name]?.() ?? node.type.name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
+  );
+}
+
+/** Label of a whole-block target, one whole message per known block kind. */
+function wholeBlockLabel(node: ProseMirrorNode): string {
+  const labels: Record<string, () => string> = {
+    blockquote: () => l10n.t('Whole block quote'),
+    bulletList: () => l10n.t('Whole bullet list'),
+    githubAlert: () => l10n.t('Whole alert'),
+    heading: () => l10n.t('Whole heading'),
+    horizontalRule: () => l10n.t('Whole divider'),
+    orderedList: () => l10n.t('Whole numbered list'),
+    paragraph: () => l10n.t('Whole paragraph'),
+    taskList: () => l10n.t('Whole task list'),
+  };
+  return labels[node.type.name]?.() ?? l10n.t('Whole {0}', readableBlockKind(node));
 }
 
 function tableDimensions(node: ProseMirrorNode): { rows: number; columns: number } | null {
@@ -304,30 +323,57 @@ function multiBlockDetail(doc: TargetDocument, startOrdinal: number, endOrdinal:
   const count = endOrdinal - startOrdinal + 1;
   const first = doc.maybeChild(startOrdinal) as ProseMirrorNode | null;
   const last = doc.maybeChild(endOrdinal) as ProseMirrorNode | null;
-  if (!first || !last) return `${count} ${plural(count, 'block')}`;
-  return `${count} ${plural(count, 'block')} · ${readableBlockKind(first)} to ${readableBlockKind(last)}`;
+  if (!first || !last) return l10n.t(count === 1 ? '{0} block' : '{0} blocks', count);
+  return l10n.t(
+    count === 1 ? '{0} block · {1} to {2}' : '{0} blocks · {1} to {2}',
+    count,
+    readableBlockKind(first),
+    readableBlockKind(last)
+  );
 }
 
 function opaqueExplanation(node: ProseMirrorNode): string {
   if (node.type.name === 'mermaid') {
-    return 'Rendered diagram parts cannot be anchored independently. This feedback applies to the whole diagram. Use Capture area for a visual sub-area.';
+    return l10n.t(
+      'Rendered diagram parts cannot be anchored independently. This feedback applies to the whole diagram. Use Capture area for a visual sub-area.'
+    );
   }
-  const kind = readableBlockKind(node);
-  return `Rendered ${kind} parts cannot be anchored independently. This feedback applies to the whole ${kind}. Use Capture area for a visual sub-area.`;
+  if (node.type.name === 'image') {
+    return l10n.t(
+      'Rendered image parts cannot be anchored independently. This feedback applies to the whole image. Use Capture area for a visual sub-area.'
+    );
+  }
+  if (node.type.name === 'mathBlock') {
+    return l10n.t(
+      'Rendered math block parts cannot be anchored independently. This feedback applies to the whole math block. Use Capture area for a visual sub-area.'
+    );
+  }
+  return l10n.t(
+    'Rendered {0} parts cannot be anchored independently. This feedback applies to the whole {0}. Use Capture area for a visual sub-area.',
+    readableBlockKind(node)
+  );
 }
 
 function fallbackExplanation(reason: FeedbackTargetPresentationReason | undefined): string | null {
   if (reason === 'large-table-selection') {
-    return 'This selection is too large to anchor cell by cell. This feedback applies to the whole table.';
+    return l10n.t(
+      'This selection is too large to anchor cell by cell. This feedback applies to the whole table.'
+    );
   }
   if (reason === 'session-cell-budget') {
-    return 'This feedback session has reached its exact cell detail limit. This feedback applies to the whole table.';
+    return l10n.t(
+      'This feedback session has reached its exact cell detail limit. This feedback applies to the whole table.'
+    );
   }
   if (reason === 'merged-table-cells' || reason === 'irregular-table') {
-    return 'This table structure cannot be anchored as one exact rectangle. This feedback applies to the whole table.';
+    return l10n.t(
+      'This table structure cannot be anchored as one exact rectangle. This feedback applies to the whole table.'
+    );
   }
   if (reason === 'unmappable-dom' || reason === 'unmappable-text-range') {
-    return 'This selection could not be anchored exactly. This feedback applies to the complete containing block.';
+    return l10n.t(
+      'This selection could not be anchored exactly. This feedback applies to the complete containing block.'
+    );
   }
   return null;
 }
@@ -351,8 +397,8 @@ export function getFeedbackTargetPresentation(
   ) {
     return {
       kind: 'unknown',
-      label: 'Selected content',
-      detail: 'Target details unavailable',
+      label: l10n.t('Selected content'),
+      detail: l10n.t('Target details unavailable'),
       preferredComposerSize: 'compact',
       lineContext: 'source',
       preview: null,
@@ -364,7 +410,9 @@ export function getFeedbackTargetPresentation(
     return {
       kind: 'multi-block',
       label: target.structuralScope.label,
-      detail: 'Complete rendered text in this scope. Source lines identify the containing block.',
+      detail: l10n.t(
+        'Complete rendered text in this scope. Source lines identify the containing block.'
+      ),
       preferredComposerSize: 'compact',
       lineContext: 'containing-source',
       preview: null,
@@ -373,8 +421,8 @@ export function getFeedbackTargetPresentation(
   if (target.sectionLabel && !target.renderedRange && !target.cellTarget) {
     return {
       kind: 'multi-block',
-      label: `Section: ${target.sectionLabel}`,
-      detail: 'Includes the heading and all subsections',
+      label: l10n.t('Section: {0}', target.sectionLabel),
+      detail: l10n.t('Includes the heading and all subsections'),
       preferredComposerSize: 'compact',
       lineContext: 'source',
       preview: null,
@@ -386,8 +434,8 @@ export function getFeedbackTargetPresentation(
   if (!first || !last) {
     return {
       kind: 'unknown',
-      label: 'Selected content',
-      detail: 'Target details unavailable',
+      label: l10n.t('Selected content'),
+      detail: l10n.t('Target details unavailable'),
       preferredComposerSize: 'compact',
       lineContext: 'source',
       preview: null,
@@ -404,8 +452,17 @@ export function getFeedbackTargetPresentation(
     if (preview) {
       return {
         kind: 'selected-cells',
-        label: 'Selected cells',
-        detail: `Rows ${rectangle.top + 1}–${rectangle.bottom} · Columns ${rectangle.left + 1}–${rectangle.right} · ${count} ${plural(count, 'cell')}`,
+        label: l10n.t('Selected cells'),
+        detail: l10n.t(
+          count === 1
+            ? 'Rows {0}–{1} · Columns {2}–{3} · {4} cell'
+            : 'Rows {0}–{1} · Columns {2}–{3} · {4} cells',
+          rectangle.top + 1,
+          rectangle.bottom,
+          rectangle.left + 1,
+          rectangle.right,
+          count
+        ),
         preferredComposerSize: 'wide',
         lineContext: 'containing-source',
         preview,
@@ -417,14 +474,14 @@ export function getFeedbackTargetPresentation(
   if (target.renderedRange) {
     const exactDetail =
       target.startOrdinal === target.endOrdinal
-        ? `${lineCount(target.focus)} ${plural(lineCount(target.focus), 'line')}`
+        ? lineCountText(lineCount(target.focus))
         : multiBlockDetail(doc, target.startOrdinal, target.endOrdinal);
     if (first.type.name === 'codeBlock' && target.startOrdinal === target.endOrdinal) {
       // Selection origin is authoritative. A native drag remains rendered
       // evidence even when its offsets happen to cover the complete code node.
       return {
         kind: 'selected-code',
-        label: 'Selected code',
+        label: l10n.t('Selected code'),
         detail: codeDetail(first, target.focus),
         preferredComposerSize: 'wide',
         lineContext: 'containing-source',
@@ -434,7 +491,7 @@ export function getFeedbackTargetPresentation(
     }
     return {
       kind: 'selected-text',
-      label: 'Selected text',
+      label: l10n.t('Selected text'),
       detail: exactDetail,
       preferredComposerSize: target.startOrdinal === target.endOrdinal ? 'compact' : 'wide',
       lineContext: 'containing-source',
@@ -446,7 +503,7 @@ export function getFeedbackTargetPresentation(
   if (target.startOrdinal !== target.endOrdinal) {
     return {
       kind: 'multi-block',
-      label: 'Selected blocks',
+      label: l10n.t('Selected blocks'),
       detail: multiBlockDetail(doc, target.startOrdinal, target.endOrdinal),
       preferredComposerSize: 'wide',
       lineContext: 'source',
@@ -459,10 +516,20 @@ export function getFeedbackTargetPresentation(
     const dimensions = tableDimensions(first);
     return {
       kind: 'whole-table',
-      label: 'Whole table',
+      label: l10n.t('Whole table'),
       detail: dimensions
-        ? `${dimensions.rows} ${plural(dimensions.rows, 'row')} × ${dimensions.columns} ${plural(dimensions.columns, 'column')}`
-        : 'Table dimensions unavailable',
+        ? l10n.t(
+            dimensions.rows === 1
+              ? dimensions.columns === 1
+                ? '{0} row × {1} column'
+                : '{0} row × {1} columns'
+              : dimensions.columns === 1
+                ? '{0} rows × {1} column'
+                : '{0} rows × {1} columns',
+            dimensions.rows,
+            dimensions.columns
+          )
+        : l10n.t('Table dimensions unavailable'),
       preferredComposerSize: 'wide',
       lineContext: 'source',
       preview: null,
@@ -473,7 +540,7 @@ export function getFeedbackTargetPresentation(
   if (first.type.name === 'codeBlock') {
     return {
       kind: 'whole-code',
-      label: 'Whole code block',
+      label: l10n.t('Whole code block'),
       detail: codeDetail(first, first.textContent || target.focus),
       preferredComposerSize: 'wide',
       lineContext: 'source',
@@ -483,9 +550,9 @@ export function getFeedbackTargetPresentation(
   }
 
   const opaqueLabels: Record<string, string> = {
-    image: 'Whole image',
-    mathBlock: 'Whole math block',
-    mermaid: 'Whole Mermaid diagram',
+    image: l10n.t('Whole image'),
+    mathBlock: l10n.t('Whole math block'),
+    mermaid: l10n.t('Whole Mermaid diagram'),
   };
   const opaqueLabel = opaqueLabels[first.type.name];
   if (opaqueLabel) {
@@ -506,7 +573,7 @@ export function getFeedbackTargetPresentation(
   const focus = wholeBlockTextPreview(first);
   return {
     kind: 'whole-block',
-    label: `Whole ${readableBlockKind(first)}`,
+    label: wholeBlockLabel(first),
     detail: readableBlockKind(first),
     preferredComposerSize: 'compact',
     lineContext: 'source',
@@ -538,19 +605,21 @@ function appendTextPreview(
   const disclosure = ownerDocument.createElement('details');
   disclosure.className = 'feedback-target-disclosure';
   const summary = ownerDocument.createElement('summary');
-  summary.textContent = 'Show more selected content';
+  summary.textContent = l10n.t('Show more selected content');
   disclosure.append(summary);
   disclosure.addEventListener('toggle', () => {
     textOwner.textContent = disclosure.open ? preview.text : preview.collapsedText;
     summary.textContent = disclosure.open
-      ? 'Show less selected content'
-      : 'Show more selected content';
+      ? l10n.t('Show less selected content')
+      : l10n.t('Show more selected content');
     element.classList.toggle('feedback-target-preview-expanded', disclosure.open);
   });
   if (preview.truncated) {
     const note = ownerDocument.createElement('p');
     note.className = 'feedback-target-truncation';
-    note.textContent = 'Preview limited. The highlighted document remains the complete target.';
+    note.textContent = l10n.t(
+      'Preview limited. The highlighted document remains the complete target.'
+    );
     disclosure.append(note);
   }
   container.append(disclosure);
@@ -566,7 +635,7 @@ function appendCellPreview(
   figure.className = 'feedback-target-preview feedback-target-cell-preview';
   figure.setAttribute('data-feedback-target-preview', '');
   const table = ownerDocument.createElement('table');
-  table.setAttribute('aria-label', `${presentation.detail} preview`);
+  table.setAttribute('aria-label', l10n.t('{0} preview', presentation.detail));
   const body = ownerDocument.createElement('tbody');
   for (const row of preview.rows) {
     const rowElement = ownerDocument.createElement('tr');
@@ -581,7 +650,7 @@ function appendCellPreview(
   figure.append(table);
   if (preview.truncated) {
     const caption = ownerDocument.createElement('figcaption');
-    caption.textContent = 'Preview limited to the first 4 rows and 4 columns.';
+    caption.textContent = l10n.t('Preview limited to the first 4 rows and 4 columns.');
     figure.append(caption);
   }
   container.append(figure);
@@ -597,7 +666,7 @@ export function createFeedbackTargetPresentationView(options: {
   const context = ownerDocument.createElement('section');
   context.className = 'feedback-target-context';
   context.setAttribute('data-feedback-target-kind', presentation.kind);
-  context.setAttribute('aria-label', `Feedback target: ${presentation.label}`);
+  context.setAttribute('aria-label', l10n.t('Feedback target: {0}', presentation.label));
 
   const header = ownerDocument.createElement('div');
   header.className = 'feedback-target-header';
@@ -633,9 +702,13 @@ export function formatFeedbackTargetSourceLines(
   endLine: number,
   context: FeedbackTargetPresentation['lineContext']
 ): string {
-  if (startLine <= 0 || endLine <= 0) return 'Source lines validated when saved';
-  const prefix = context === 'containing-source' ? 'Containing source' : 'Source';
+  if (startLine <= 0 || endLine <= 0) return l10n.t('Source lines validated when saved');
+  if (context === 'containing-source') {
+    return startLine === endLine
+      ? l10n.t('Containing source line {0}', startLine)
+      : l10n.t('Containing source lines {0}-{1}', startLine, endLine);
+  }
   return startLine === endLine
-    ? `${prefix} line ${startLine}`
-    : `${prefix} lines ${startLine}-${endLine}`;
+    ? l10n.t('Source line {0}', startLine)
+    : l10n.t('Source lines {0}-{1}', startLine, endLine);
 }

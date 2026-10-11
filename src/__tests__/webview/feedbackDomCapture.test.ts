@@ -7,6 +7,7 @@ import {
   validateCaptureResources,
 } from '../../webview/features/feedbackDomCapture';
 import { FEEDBACK_MAX_SCREENSHOT_DATA_URL_LENGTH_V2 } from '../../shared/feedbackEvidenceV2';
+import * as l10n from '../../webview/l10n';
 
 const PNG_DATA_URL_PREFIX = 'data:image/png;base64,';
 const MAX_ENCODED_LENGTH = FEEDBACK_MAX_SCREENSHOT_DATA_URL_LENGTH_V2 - PNG_DATA_URL_PREFIX.length;
@@ -1052,5 +1053,64 @@ describe('modern-screenshot feedback rasterizer', () => {
     ].join('');
 
     expect(() => validateCaptureResources(root)).not.toThrow();
+  });
+});
+
+describe('modern-screenshot feedback rasterizer localization', () => {
+  const tooManyResources = (): HTMLElement => {
+    const root = document.createElement('div');
+    for (let index = 0; index < 1_025; index += 1) {
+      const image = document.createElement('img');
+      image.src = `data:image/png;base64,${index}`;
+      root.append(image);
+    }
+    return root;
+  };
+  const oversizedCapture = (): Promise<unknown> =>
+    createModernScreenshotRasterizer(jest.fn())({
+      root: document.createElement('div'),
+      rectangle: { left: 0, top: 0, width: 4_000, height: 4_000 },
+      scale: 1,
+    });
+  afterEach(() => l10n.resetL10n());
+
+  it('reports capture limits in English when no bundle is loaded', async () => {
+    expect(() => validateCaptureResources(tooManyResources())).toThrow(
+      `The selected area exceeds the ${(1_024).toLocaleString()} resource-reference feedback capture limit. Select a smaller area.`
+    );
+    await expect(oversizedCapture()).rejects.toMatchObject({
+      code: 'MD4H-FB-CAPTURE-002',
+      message: 'The selected area exceeds the 12 megapixels feedback limit.',
+    });
+  });
+
+  it('translates the capture errors shown to the user and keeps their codes', async () => {
+    l10n.configureL10n({
+      'The selected area exceeds the {0} resource-reference feedback capture limit. Select a smaller area.':
+        'La zone dépasse la limite de {0} références de ressources. Sélectionnez une zone plus petite.',
+      'The selected area exceeds the 12 megapixels feedback limit.':
+        'La zone dépasse la limite de 12 mégapixels.',
+      'A rendered image or background is not available through the VS Code webview resource boundary.':
+        'Une image affichée est inaccessible.',
+    });
+
+    expect(() => validateCaptureResources(tooManyResources())).toThrow(
+      expect.objectContaining({
+        code: 'MD4H-FB-CAPTURE-002',
+        message: `La zone dépasse la limite de ${(1_024).toLocaleString()} références de ressources. Sélectionnez une zone plus petite.`,
+      })
+    );
+    await expect(oversizedCapture()).rejects.toMatchObject({
+      code: 'MD4H-FB-CAPTURE-002',
+      message: 'La zone dépasse la limite de 12 mégapixels.',
+    });
+    const external = document.createElement('div');
+    external.innerHTML = '<img src="https://example.com/private.png">';
+    expect(() => validateCaptureResources(external)).toThrow(
+      expect.objectContaining({
+        code: 'MD4H-FB-CAPTURE-001',
+        message: 'Une image affichée est inaccessible.',
+      })
+    );
   });
 });

@@ -11,6 +11,7 @@
 import type { Editor } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { createFeedbackNodeViewInteractionGuards } from './feedbackReview';
+import * as l10n from '../l10n';
 
 export interface FeedbackPeerLockController {
   lock(lockId: string, message: string): void;
@@ -95,7 +96,7 @@ export function createFeedbackPeerLockController(options: {
       const navigateButton = document.createElement('button');
       navigateButton.type = 'button';
       navigateButton.className = 'feedback-peer-lock-action feedback-secondary-button';
-      navigateButton.textContent = 'Go to active feedback';
+      navigateButton.textContent = l10n.t('Go to active feedback');
       navigateButton.addEventListener('click', () => {
         if (lockId !== null) options.onGoToActiveFeedback(lockId);
       });

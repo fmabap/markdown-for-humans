@@ -27,10 +27,16 @@
     --md-selection: var(--vscode-editor-selectionBackground);
   
     /* Typography and layout — zoom override takes priority if set by JS */
-    --md-base-size: var(--md-base-size-override, var(--vscode-editor-font-size, 14px));
+    --md-base-size: var(--md-base-size-override, var(--md-editor-font-size, var(--vscode-editor-font-size, 14px)));
   
-    line-height: 1.58;
-    letter-spacing: -0.003em;
+    /* Reader typography (markdownForHumans.font.*). JS sets a --md-* property only
+       when its setting is changed, so each fallback is the built-in look: the font
+       and weight VS Code gives webview body text, and the editor's own spacing. */
+    font-family: var(--md-font-family, var(--vscode-font-family));
+    font-weight: var(--md-font-weight, var(--vscode-font-weight));
+    line-height: var(--md-line-height, 1.58);
+    letter-spacing: var(--md-letter-spacing, -0.003em);
+    word-spacing: var(--md-word-spacing, normal);
   
     color: var(--md-foreground);
     background-color: var(--md-background);
@@ -110,7 +116,7 @@
     margin: 0;
     margin-top: var(--md-paragraph-spacing-before, 0pt);
     margin-bottom: var(--md-paragraph-spacing-after, 0pt);
-    line-height: 1.58;
+    line-height: var(--md-line-height, 1.58);
     font-size: var(--md-base-size);
   }
 
@@ -146,7 +152,7 @@
   
   .markdown-editor li {
     margin: 0.25em 0;
-    line-height: 1.58;
+    line-height: var(--md-line-height, 1.58);
   }
   
   .markdown-editor li>p {
@@ -208,6 +214,20 @@
     font-size: 90%;
   }
   
+  /* Reader letter and word spacing is for prose: word spacing breaks column
+     alignment in code and letter spacing breaks KaTeX layout. The property is
+     unset until the reader changes either setting, so these inherit as before. */
+  .markdown-editor :is(pre, code, .katex, .md4h-html-comment) {
+    letter-spacing: var(--md-code-text-spacing, inherit);
+    word-spacing: var(--md-code-text-spacing, inherit);
+  }
+
+  /* Monospace blocks that hold text directly (Mermaid source, comment markers)
+     keep the standard weight; `code` sets its own weight below. */
+  .markdown-editor :is(pre, .md4h-html-comment) {
+    font-weight: var(--vscode-font-weight);
+  }
+
   .markdown-editor pre {
     background-color: var(--md-code-bg, var(--vscode-editor-background));
     border: 1px solid var(--md-border);
@@ -446,7 +466,7 @@
     margin: 1em 0;
     font-style: italic;
     color: var(--md-muted);
-    line-height: 1.58;
+    line-height: var(--md-line-height, 1.58);
     position: relative;
   }
   
@@ -472,7 +492,7 @@
     border-radius: 6px;
     font-style: normal;
     color: var(--md-foreground);
-    line-height: 1.58;
+    line-height: var(--md-line-height, 1.58);
     position: relative;
   }
   
@@ -1152,9 +1172,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Mermaid SVG text inherits typography from `.markdown-editor`; reset to avoid clipped labels. */
+    /* Mermaid SVG text inherits typography from `.markdown-editor`; reset to avoid clipped labels.
+       Labels are measured in VS Code's own font before the SVG is placed here, so the
+       reader's body font and weight must not reach them either. */
+    font-family: var(--vscode-font-family);
+    font-weight: var(--vscode-font-weight);
     line-height: normal;
     letter-spacing: normal;
+    word-spacing: normal;
   }
   
   .mermaid-render.hidden {
@@ -1269,7 +1294,7 @@
   }
   
   .markdown-editor .ProseMirror p.is-editor-empty:first-child::before {
-    content: 'Start writing...';
+    content: var(--md4h-text-start-writing, 'Start writing...');
     color: var(--md-muted);
     pointer-events: none;
     height: 0;
@@ -1287,7 +1312,7 @@
   }
   
   .ProseMirror.drag-over::after {
-    content: 'Drop image here';
+    content: var(--md4h-text-drop-image, 'Drop image here');
     position: fixed;
     top: 50%;
     left: 50%;
@@ -1575,6 +1600,20 @@
 
   /* Custom inline-SVG toolbar glyphs (e.g. Math √x, Insert image). The SVG uses
      currentColor, so it inherits the button's text colour and active state. */
+  /* A language's own letter for Bold, Italic or Strikethrough, drawn in that style. */
+  .toolbar-icon.toolbar-letter-bold {
+    font-weight: 700;
+  }
+
+  .toolbar-icon.toolbar-letter-italic {
+    font-style: italic;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .toolbar-icon.toolbar-letter-strikethrough {
+    text-decoration: line-through;
+  }
+
   .toolbar-icon.uses-svg-icon {
     display: inline-flex;
     align-items: center;
@@ -3730,9 +3769,27 @@ body.vscode-high-contrast-light.feedback-completion-open {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* Start-aligned so a group that is too wide overflows on one side only and
+     fitFeedbackToolbarLabels can measure it. The toolbar centers the group. */
+  justify-content: flex-start;
   max-width: 100%;
   gap: 6px;
+}
+
+/* A squeezed button lets its label run over the next button. Buttons keep their
+   width; fitFeedbackToolbarLabels switches to icons when they do not all fit. */
+.feedback-toolbar-group .feedback-toolbar-button {
+  flex-shrink: 0;
+}
+
+.formatting-toolbar.feedback-toolbar-compact .feedback-toolbar-button {
+  width: 28px;
+  min-width: 28px;
+  padding-inline: 5px;
+}
+
+.formatting-toolbar.feedback-toolbar-compact .feedback-toolbar-button .toolbar-button-label {
+  display: none;
 }
 
 .feedback-more-menu-host {

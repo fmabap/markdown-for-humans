@@ -14,6 +14,7 @@ import {
   clearToasts,
 } from '../../webview/features/auditOverlay';
 import { AuditIssue } from '../../webview/features/auditDocument';
+import * as l10n from '../../webview/l10n';
 
 let mockVscodeApi: { postMessage: jest.Mock };
 
@@ -576,6 +577,181 @@ describe('Audit Overlay UI', () => {
 
       (overlay.querySelector('.audit-fix-button.manual-fix') as HTMLButtonElement).click();
       expect(title.textContent).toContain('1 issue');
+    });
+  });
+
+  describe('localization', () => {
+    // Leaves out "Fix" on purpose, to exercise the fallback to English.
+    const sampleBundle: Record<string, string> = {
+      'Document Audit ({0} issue)': '文档审核（{0} 项问题）',
+      'Document Audit ({0} issues)': '文档审核（共 {0} 项问题）',
+      Close: '关闭',
+      'Navigate to issue': '转到问题',
+      'Jump to issue': '跳转到问题',
+      'Fix link...': '修复链接...',
+      'Browse…': '浏览…',
+      'Open file picker to select the correct file': '打开文件选择器以选择正确的文件',
+      'Waiting…': '等待中…',
+      'Heading name changed slightly. Pick the updated one:':
+        '标题名称略有变化，请选择更新后的标题：',
+      'Your document is healthy: no issues found!': '文档状态良好，未发现问题！',
+      'All fixed! 🎉': '全部修复！🎉',
+      Preview: '预览',
+      'File preview': '文件预览',
+      'Preview unavailable': '无法预览',
+      'Image preview is not available for this path.': '此路径无法预览图片。',
+    };
+
+    const linkIssue = (index: number): AuditIssue => ({
+      type: 'link',
+      message: `Broken link ${index}`,
+      target: `missing-${index}.md`,
+      pos: 1,
+      nodeSize: 1,
+    });
+
+    afterEach(() => {
+      l10n.resetL10n();
+      document.querySelector('.audit-preview-popover')?.remove();
+    });
+
+    it('shows English when no bundle is loaded', () => {
+      showAuditOverlay(editor, [linkIssue(1), linkIssue(2)]);
+
+      expect(document.querySelector('.audit-overlay-title')?.textContent).toBe(
+        'Document Audit (2 issues)'
+      );
+      expect(document.querySelector('.audit-overlay-close')?.getAttribute('aria-label')).toBe(
+        'Close'
+      );
+    });
+
+    it('translates the title with its count, for one issue and for several', () => {
+      l10n.configureL10n(sampleBundle);
+
+      showAuditOverlay(editor, [linkIssue(1), linkIssue(2)]);
+      const title = document.querySelector('.audit-overlay-title') as HTMLElement;
+      expect(title.textContent).toBe('文档审核（共 2 项问题）');
+
+      (document.querySelector('.audit-fix-button.manual-fix') as HTMLButtonElement).click();
+      expect(title.textContent).toBe('文档审核（1 项问题）');
+    });
+
+    it('translates the single issue title on first render', () => {
+      l10n.configureL10n(sampleBundle);
+
+      showAuditOverlay(editor, [linkIssue(1)]);
+
+      expect(document.querySelector('.audit-overlay-title')?.textContent).toBe(
+        '文档审核（1 项问题）'
+      );
+    });
+
+    it('translates labels written inside the HTML template and escapes them', () => {
+      l10n.configureL10n({ ...sampleBundle, Close: '关闭 "x" <b>' });
+
+      showAuditOverlay(editor, [linkIssue(1)]);
+
+      const closeBtn = document.querySelector('.audit-overlay-close') as HTMLElement;
+      expect(closeBtn.getAttribute('aria-label')).toBe('关闭 "x" <b>');
+      expect(closeBtn.querySelector('b')).toBeNull();
+    });
+
+    it('translates the row buttons, input placeholder and Browse button', () => {
+      l10n.configureL10n(sampleBundle);
+
+      showAuditOverlay(editor, [linkIssue(1)]);
+
+      const nav = document.querySelector('.audit-issue-nav-btn') as HTMLButtonElement;
+      expect(nav.getAttribute('aria-label')).toBe('转到问题');
+      expect(nav.title).toBe('跳转到问题');
+      expect((document.querySelector('.audit-manual-input') as HTMLInputElement).placeholder).toBe(
+        '修复链接...'
+      );
+      expect(document.querySelector('.audit-fix-button')?.textContent).toBe('Fix');
+      const browse = document.querySelector('.audit-browse-btn') as HTMLButtonElement;
+      expect(browse.textContent?.trim()).toBe('浏览…');
+      expect(browse.title).toBe('打开文件选择器以选择正确的文件');
+      expect(browse.querySelector('.codicon-folder')).not.toBeNull();
+    });
+
+    it('translates the Browse button while waiting for the picker', () => {
+      l10n.configureL10n(sampleBundle);
+      showAuditOverlay(editor, [linkIssue(1)]);
+
+      const browse = document.querySelector('.audit-browse-btn') as HTMLButtonElement;
+      browse.click();
+
+      expect(browse.textContent?.trim()).toBe('等待中…');
+      expect(browse.querySelector('.codicon-clock')).not.toBeNull();
+    });
+
+    it('translates the heading hint', () => {
+      l10n.configureL10n(sampleBundle);
+
+      showAuditOverlay(editor, [
+        {
+          type: 'heading',
+          message: 'Heading anchor not found: #introduction',
+          target: 'introduction',
+          suggestions: ['introductin'],
+          pos: 1,
+          nodeSize: 1,
+        },
+      ]);
+
+      expect(document.querySelector('.audit-heading-hint')?.textContent).toBe(
+        '标题名称略有变化，请选择更新后的标题：'
+      );
+    });
+
+    it('translates the healthy toast and the all fixed message', () => {
+      l10n.configureL10n(sampleBundle);
+
+      showAuditOverlay(editor, []);
+      expect(document.querySelector('.toast-message')?.textContent).toBe(
+        '文档状态良好，未发现问题！'
+      );
+
+      showAuditOverlay(editor, [linkIssue(1)]);
+      (document.querySelector('.audit-fix-button.manual-fix') as HTMLButtonElement).click();
+      expect(document.querySelector('.audit-overlay-list')?.textContent).toBe('全部修复！🎉');
+    });
+
+    it('translates the suggestion preview headers and texts', () => {
+      l10n.configureL10n(sampleBundle);
+      showAuditOverlay(editor, [
+        {
+          type: 'link',
+          message: 'Linked file not found: missing.md',
+          target: 'missing.md',
+          suggestions: ['docs/guide.md'],
+          pos: 1,
+          nodeSize: 1,
+        },
+        {
+          type: 'image',
+          message: 'Image file not found: missing.png',
+          target: 'missing.png',
+          suggestions: ['images/found.png'],
+          pos: 2,
+          nodeSize: 1,
+        },
+      ]);
+      const [filePill, imagePill] = Array.from(
+        document.querySelectorAll<HTMLElement>('.audit-suggestion-pill')
+      );
+
+      filePill.dispatchEvent(new Event('mouseover', { bubbles: true }));
+      expect(document.querySelector('.audit-preview-header')?.textContent).toBe('文件预览');
+
+      imagePill.dispatchEvent(new Event('mouseover', { bubbles: true }));
+      return Promise.resolve().then(() => {
+        expect(document.querySelector('.audit-preview-header')?.textContent).toBe('无法预览');
+        expect(document.querySelector('.audit-preview-empty')?.textContent).toBe(
+          '此路径无法预览图片。'
+        );
+      });
     });
   });
 });

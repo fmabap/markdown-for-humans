@@ -82,7 +82,9 @@ export async function sendFeedbackCommand(
     }
     if (!ready || !target.ready) {
       void vscode.window.showWarningMessage(
-        'Feedback is not ready because the editor has not finished loading. Try again in a moment, or reopen the editor if it stays blank.'
+        vscode.l10n.t(
+          'Feedback is not ready because the editor has not finished loading. Try again in a moment, or reopen the editor if it stays blank.'
+        )
       );
       return false;
     }
@@ -92,7 +94,7 @@ export async function sendFeedbackCommand(
     console.error('[MD4H] Feedback command delivery failed:', error);
   }
   void vscode.window.showWarningMessage(
-    'Feedback command could not be delivered. Reopen the editor and try again.'
+    vscode.l10n.t('Feedback command could not be delivered. Reopen the editor and try again.')
   );
   return false;
 }

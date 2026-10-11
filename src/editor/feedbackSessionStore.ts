@@ -22,6 +22,7 @@ import type { Dirent, Stats } from 'fs';
 import { link, lstat, mkdir, open, readdir, rename, rmdir, unlink, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { inflateSync } from 'zlib';
+import * as vscode from 'vscode';
 import {
   FEEDBACK_MAX_EXACT_CELL_COUNT_PER_SESSION,
   isFeedbackCellRectangleWithinExactLimit,
@@ -212,7 +213,10 @@ function assertFeedbackExactCellBudget(items: readonly FeedbackItem[]): void {
   if (feedbackExactCellCount(items) <= FEEDBACK_MAX_EXACT_CELL_COUNT_PER_SESSION) return;
   throw new FeedbackSessionError(
     'MD4H-FB-STORE-001',
-    `A feedback bundle can retain exact geometry for at most ${FEEDBACK_MAX_EXACT_CELL_COUNT_PER_SESSION.toLocaleString('en-US')} table cells.`
+    vscode.l10n.t(
+      'A feedback bundle can retain exact geometry for at most {0} table cells.',
+      FEEDBACK_MAX_EXACT_CELL_COUNT_PER_SESSION.toLocaleString(vscode.env.language || undefined)
+    )
   );
 }
 
@@ -260,7 +264,9 @@ export class FeedbackReportLockBusyError extends FeedbackSessionError {
   public constructor() {
     super(
       'MD4H-FB-STORE-002',
-      'Another window or process is updating this feedback report. Try again in a moment. A lock left by a closed window clears after 5 minutes.'
+      vscode.l10n.t(
+        'Another window or process is updating this feedback report. Try again in a moment. A lock left by a closed window clears after 5 minutes.'
+      )
     );
     this.name = 'FeedbackReportLockBusyError';
   }
@@ -554,7 +560,7 @@ export function buildFeedbackBundleLocation(options: {
   if (!sourceRelativeNative || !isRelativePathContained(sourceRelativeNative)) {
     throw new FeedbackSessionError(
       'MD4H-FB-STORE-001',
-      'The Markdown source must be a file inside the active workspace.'
+      vscode.l10n.t('The Markdown source must be a file inside the active workspace.')
     );
   }
   if (hasControlCharacters(sourceRelativeNative)) {
@@ -568,7 +574,7 @@ export function buildFeedbackBundleLocation(options: {
   if (extension !== '.md' && extension !== '.markdown') {
     throw new FeedbackSessionError(
       'MD4H-FB-STORE-001',
-      'Feedback sessions can only review Markdown files.'
+      vscode.l10n.t('Feedback sessions can only review Markdown files.')
     );
   }
 
@@ -623,7 +629,7 @@ export function decodeAndValidateFeedbackPng(pngData: string | Uint8Array): Vali
   if (bytes.byteLength > FEEDBACK_MAX_SCREENSHOT_BYTES_V2) {
     throw new FeedbackSessionError(
       'MD4H-FB-CAPTURE-002',
-      'The screenshot exceeds the 10 MiB feedback limit.'
+      vscode.l10n.t('The screenshot exceeds the 10 MiB feedback limit.')
     );
   }
   if (bytes.byteLength < PNG_SIGNATURE.byteLength || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
@@ -638,7 +644,7 @@ export function decodeAndValidateFeedbackPng(pngData: string | Uint8Array): Vali
     if (png.width * png.height > MAX_PNG_PIXELS) {
       throw new FeedbackSessionError(
         'MD4H-FB-CAPTURE-002',
-        'The screenshot exceeds the 12 megapixels feedback limit.'
+        vscode.l10n.t('The screenshot exceeds the 12 megapixels feedback limit.')
       );
     }
     validateFeedbackPngImageData(png);
@@ -1061,7 +1067,7 @@ export class FeedbackSessionStore {
       if (location === undefined) {
         throw new FeedbackSessionError(
           'MD4H-FB-STORE-002',
-          'Could not allocate a unique feedback round. Try starting feedback again.'
+          vscode.l10n.t('Could not allocate a unique feedback round. Try starting feedback again.')
         );
       }
 
@@ -2197,7 +2203,10 @@ export class FeedbackSessionStore {
           if (tombstone.evicted) {
             throw new FeedbackSessionError(
               'MD4H-FB-STORE-001',
-              `This screenshot is no longer available to restore for feedback item ${id}.`
+              vscode.l10n.t(
+                'This screenshot is no longer available to restore for feedback item {0}.',
+                id
+              )
             );
           }
           if (tombstone.screenshotBytes === undefined) {
@@ -2312,7 +2321,10 @@ export class FeedbackSessionStore {
           if (tombstone.evicted) {
             throw new FeedbackSessionError(
               'MD4H-FB-STORE-001',
-              `This screenshot is no longer available to restore for feedback item ${id}.`
+              vscode.l10n.t(
+                'This screenshot is no longer available to restore for feedback item {0}.',
+                id
+              )
             );
           }
           if (tombstone.screenshotBytes === undefined) {
@@ -2445,13 +2457,15 @@ export class FeedbackSessionStore {
         if (this._items.length === 0) {
           throw new FeedbackSessionError(
             'MD4H-FB-STORE-001',
-            'Add at least one feedback item before finishing the session.'
+            vscode.l10n.t('Add at least one feedback item before finishing the session.')
           );
         }
         if (computeFeedbackSourceSha256(currentSourceBytes) !== this._snapshot.sourceSha256) {
           throw new FeedbackSessionError(
             'MD4H-FB-SNAPSHOT-001',
-            'The Markdown source changed after feedback started. The draft was preserved and cannot be sealed.'
+            vscode.l10n.t(
+              'The Markdown source changed after feedback started. The draft was preserved and cannot be sealed.'
+            )
           );
         }
         assertValidDate(sealedAt, 'feedback sealing');
@@ -2789,7 +2803,12 @@ export class FeedbackSessionStore {
         if (exactCellCount > FEEDBACK_MAX_EXACT_CELLS_PER_SESSION_V2) {
           throw new FeedbackSessionError(
             'MD4H-FB-STORE-001',
-            `A v2 feedback bundle can retain exact geometry for at most ${FEEDBACK_MAX_EXACT_CELLS_PER_SESSION_V2.toLocaleString('en-US')} table cells.`
+            vscode.l10n.t(
+              'A v2 feedback bundle can retain exact geometry for at most {0} table cells.',
+              FEEDBACK_MAX_EXACT_CELLS_PER_SESSION_V2.toLocaleString(
+                vscode.env.language || undefined
+              )
+            )
           );
         }
       }
@@ -2928,13 +2947,13 @@ export class FeedbackSessionStore {
     if (this._discarded) {
       throw new FeedbackSessionError(
         'MD4H-FB-STORE-001',
-        'This feedback draft was discarded and can no longer be changed.'
+        vscode.l10n.t('This feedback draft was discarded and can no longer be changed.')
       );
     }
     if (this._snapshot.state === 'sealed') {
       throw new FeedbackSessionError(
         'MD4H-FB-STORE-001',
-        'This feedback bundle is sealed and immutable.'
+        vscode.l10n.t('This feedback bundle is sealed and immutable.')
       );
     }
   }
@@ -3023,7 +3042,9 @@ export class FeedbackSessionStore {
     if (computeFeedbackSourceSha256(currentBytes) !== this._persistedReportSha256) {
       throw new FeedbackSessionError(
         'MD4H-FB-STORE-001',
-        'The feedback report changed in another window or process. Reopen it before writing.'
+        vscode.l10n.t(
+          'The feedback report changed in another window or process. Reopen it before writing.'
+        )
       );
     }
     return currentBytes;
@@ -3178,7 +3199,7 @@ function encodeFeedbackReport(
   if (bytes.byteLength > MAX_REPORT_BYTES) {
     throw new FeedbackSessionError(
       'MD4H-FB-STORE-002',
-      'The feedback report exceeds the 64 MiB safe resume limit.'
+      vscode.l10n.t('The feedback report exceeds the 64 MiB safe resume limit.')
     );
   }
   return bytes;
@@ -3218,7 +3239,7 @@ async function readAndValidateDraft(
     if (reportStats.size > MAX_REPORT_BYTES) {
       throw new FeedbackDraftValidationError(
         'report-too-large',
-        'The feedback report exceeds the safe resume limit.'
+        vscode.l10n.t('The feedback report exceeds the safe resume limit.')
       );
     }
 
@@ -4076,7 +4097,10 @@ function assertFeedbackItemCount(itemCount: number): void {
   ) {
     throw new FeedbackSessionError(
       'MD4H-FB-STORE-001',
-      `A feedback bundle can contain at most ${MAX_FEEDBACK_ITEMS_PER_BUNDLE.toLocaleString('en-US')} feedback items.`
+      vscode.l10n.t(
+        'A feedback bundle can contain at most {0} feedback items.',
+        MAX_FEEDBACK_ITEMS_PER_BUNDLE.toLocaleString(vscode.env.language || undefined)
+      )
     );
   }
 }
@@ -4089,7 +4113,10 @@ function assertFeedbackNextSequence(nextSequence: number): void {
   ) {
     throw new FeedbackSessionError(
       'MD4H-FB-STORE-001',
-      `A feedback bundle can contain at most ${MAX_FEEDBACK_ITEMS_PER_BUNDLE.toLocaleString('en-US')} feedback items.`
+      vscode.l10n.t(
+        'A feedback bundle can contain at most {0} feedback items.',
+        MAX_FEEDBACK_ITEMS_PER_BUNDLE.toLocaleString(vscode.env.language || undefined)
+      )
     );
   }
 }
@@ -4099,7 +4126,10 @@ function assertFeedbackSequenceCanAllocate(nextSequence: number): void {
   if (nextSequence > MAX_FEEDBACK_ITEMS_PER_BUNDLE) {
     throw new FeedbackSessionError(
       'MD4H-FB-STORE-001',
-      `A feedback bundle can contain at most ${MAX_FEEDBACK_ITEMS_PER_BUNDLE.toLocaleString('en-US')} feedback items.`
+      vscode.l10n.t(
+        'A feedback bundle can contain at most {0} feedback items.',
+        MAX_FEEDBACK_ITEMS_PER_BUNDLE.toLocaleString(vscode.env.language || undefined)
+      )
     );
   }
 }
@@ -4114,7 +4144,7 @@ function addScreenshotBytesWithinQuota(currentBytes: number, additionalBytes: nu
   ) {
     throw new FeedbackSessionError(
       'MD4H-FB-CAPTURE-002',
-      'The feedback bundle exceeds the 64 MiB cumulative screenshot limit.'
+      vscode.l10n.t('The feedback bundle exceeds the 64 MiB cumulative screenshot limit.')
     );
   }
   return currentBytes + additionalBytes;
@@ -5060,7 +5090,7 @@ async function assertSafeFeedbackDirectoryChain(
       if (stats.isSymbolicLink()) {
         throw new FeedbackSessionError(
           'MD4H-FB-STORE-001',
-          'Feedback storage cannot use symbolic-link directory components.'
+          vscode.l10n.t('Feedback storage cannot use symbolic-link directory components.')
         );
       }
       if (!stats.isDirectory()) {

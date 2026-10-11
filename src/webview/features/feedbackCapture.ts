@@ -16,6 +16,7 @@ import {
   createFeedbackDiscardDialog,
   type FeedbackDiscardDialogController,
 } from './feedbackDiscardDialog';
+import * as l10n from '../l10n';
 
 /** A point in client or bitmap coordinates, as documented by the accepting API. */
 export interface CapturePoint {
@@ -94,7 +95,7 @@ export function throwIfFeedbackCaptureAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return;
   throw new FeedbackCaptureError(
     'MD4H-FB-CAPTURE-002',
-    'Feedback capture was cancelled before it could finish.',
+    l10n.t('Feedback capture was cancelled before it could finish.'),
     signal.reason
   );
 }
@@ -205,21 +206,23 @@ export interface FeedbackAnnotationModalController {
 const MAX_CAPTURE_SCALE = 2;
 const DEFAULT_MINIMUM_CAPTURE_SIZE = 1;
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+// Labels are looked up on each use so they follow the loaded translations.
 const ANNOTATION_PALETTE: readonly {
   color: AnnotationColor;
-  label: string;
+  label: () => string;
   stroke: string;
   halo: string;
 }[] = [
-  { color: 'coral', label: 'Coral', stroke: '#e75d4f', halo: '#ffffff' },
-  { color: 'yellow', label: 'Yellow', stroke: '#f5c400', halo: '#1f2328' },
-  { color: 'blue', label: 'Blue', stroke: '#2f81f7', halo: '#ffffff' },
-  { color: 'green', label: 'Green', stroke: '#2da44e', halo: '#ffffff' },
+  { color: 'coral', label: () => l10n.t('Coral'), stroke: '#e75d4f', halo: '#ffffff' },
+  { color: 'yellow', label: () => l10n.t('Yellow'), stroke: '#f5c400', halo: '#1f2328' },
+  { color: 'blue', label: () => l10n.t('Blue'), stroke: '#2f81f7', halo: '#ffffff' },
+  { color: 'green', label: () => l10n.t('Green'), stroke: '#2da44e', halo: '#ffffff' },
 ];
 const DEFAULT_ANNOTATION_COLOR: AnnotationColor = 'coral';
 const ANNOTATION_STROKE_WIDTH = 3;
 const ANNOTATION_HALO_WIDTH = 7;
-const IMAGE_DECODE_ERROR_MESSAGE = 'Could not load this screenshot. Retake it to try again.';
+const imageDecodeErrorMessage = (): string =>
+  l10n.t('Could not load this screenshot. Retake it to try again.');
 
 let modalSequence = 0;
 
@@ -631,7 +634,7 @@ function validateRasterizedCapture(image: RasterizedCapture): void {
   ) {
     throw new FeedbackCaptureError(
       'MD4H-FB-CAPTURE-002',
-      'The screenshot renderer returned an invalid PNG.'
+      l10n.t('The screenshot renderer returned an invalid PNG.')
     );
   }
 }
@@ -654,7 +657,7 @@ export async function captureVisibleArea(
   if (!rectangle) {
     throw new FeedbackCaptureError(
       'MD4H-FB-ANCHOR-001',
-      'Select a visible part of the rendered Markdown.'
+      l10n.t('Select a visible part of the rendered Markdown.')
     );
   }
 
@@ -664,7 +667,7 @@ export async function captureVisibleArea(
   if (!blockRange) {
     throw new FeedbackCaptureError(
       'MD4H-FB-ANCHOR-001',
-      'The selected area does not contain rendered Markdown.'
+      l10n.t('The selected area does not contain rendered Markdown.')
     );
   }
 
@@ -686,7 +689,7 @@ export async function captureVisibleArea(
     if (error instanceof FeedbackCaptureError) throw error;
     throw new FeedbackCaptureError(
       'MD4H-FB-CAPTURE-002',
-      'The selected area could not be rendered as a screenshot.',
+      l10n.t('The selected area could not be rendered as a screenshot.'),
       error
     );
   }
@@ -1043,21 +1046,23 @@ export function createFeedbackAnnotationModal(
   panel.className = 'feedback-annotation-panel';
   const title = document.createElement('h2');
   title.id = titleId;
-  title.textContent = 'Annotate screenshot';
+  title.textContent = l10n.t('Annotate screenshot');
   const description = document.createElement('p');
   description.id = descriptionId;
-  description.textContent = 'Mark the screenshot if useful, then describe what should change.';
+  description.textContent = l10n.t(
+    'Mark the screenshot if useful, then describe what should change.'
+  );
 
   const toolbar = document.createElement('div');
   toolbar.className = 'feedback-annotation-toolbar';
   toolbar.setAttribute('role', 'toolbar');
-  toolbar.setAttribute('aria-label', 'Screenshot annotation tools');
+  toolbar.setAttribute('aria-label', l10n.t('Screenshot annotation tools'));
 
   const toolButtons = new Map<AnnotationTool, HTMLButtonElement>();
   const toolDefinitions: readonly [AnnotationTool, string, string][] = [
-    ['pen', 'Pen tool', 'Pen'],
-    ['rectangle', 'Rectangle tool', 'Rectangle'],
-    ['ellipse', 'Ellipse tool', 'Ellipse'],
+    ['pen', l10n.t('Pen tool'), l10n.t('Pen')],
+    ['rectangle', l10n.t('Rectangle tool'), l10n.t('Rectangle')],
+    ['ellipse', l10n.t('Ellipse tool'), l10n.t('Ellipse')],
   ];
   for (const [tool, label, text] of toolDefinitions) {
     const button = createButton(label, text);
@@ -1067,24 +1072,25 @@ export function createFeedbackAnnotationModal(
     toolbar.appendChild(button);
   }
 
-  const undoButton = createButton('Undo annotation', 'Undo');
-  const redoButton = createButton('Redo annotation', 'Redo');
-  const clearButton = createButton('Clear annotations', 'Clear');
+  const undoButton = createButton(l10n.t('Undo annotation'), l10n.t('Undo'));
+  const redoButton = createButton(l10n.t('Redo annotation'), l10n.t('Redo'));
+  const clearButton = createButton(l10n.t('Clear annotations'), l10n.t('Clear'));
   const colorGroup = document.createElement('div');
   colorGroup.className = 'feedback-annotation-colors';
   colorGroup.setAttribute('role', 'group');
-  colorGroup.setAttribute('aria-label', 'Annotation color');
+  colorGroup.setAttribute('aria-label', l10n.t('Annotation color'));
   const colorLabel = document.createElement('span');
   colorLabel.className = 'feedback-annotation-color-label';
-  colorLabel.textContent = 'Color';
+  colorLabel.textContent = l10n.t('Color');
   colorLabel.setAttribute('aria-hidden', 'true');
   colorGroup.append(colorLabel);
   const colorButtons = new Map<AnnotationColor, HTMLButtonElement>();
   for (const palette of ANNOTATION_PALETTE) {
-    const button = createButton(`${palette.label} annotation color`, '');
+    const colorName = palette.label();
+    const button = createButton(l10n.t('{0} annotation color', colorName), '');
     button.className = 'feedback-annotation-color';
     button.dataset.feedbackColor = palette.color;
-    button.title = palette.label;
+    button.title = colorName;
     button.style.setProperty('--md4h-annotation-swatch', palette.stroke);
     button.setAttribute('aria-pressed', String(palette.color === activeColor));
     colorButtons.set(palette.color, button);
@@ -1101,7 +1107,7 @@ export function createFeedbackAnnotationModal(
   const image = document.createElement('img');
   image.className = 'feedback-annotation-image';
   image.src = options.image.dataUrl;
-  image.alt = 'Captured document area';
+  image.alt = l10n.t('Captured document area');
   image.draggable = false;
   // Retake and Replace prefill the draft, so Add can be clicked before a large
   // PNG decodes. drawImage on an undecoded image paints nothing and would save
@@ -1114,14 +1120,14 @@ export function createFeedbackAnnotationModal(
   overlay.setAttribute('viewBox', `0 0 ${bitmap.width} ${bitmap.height}`);
   overlay.setAttribute('preserveAspectRatio', 'none');
   overlay.setAttribute('role', 'img');
-  overlay.setAttribute('aria-label', 'Screenshot annotation drawing surface');
+  overlay.setAttribute('aria-label', l10n.t('Screenshot annotation drawing surface'));
   overlay.setAttribute('tabindex', '0');
   surface.append(image, overlay);
   preview.append(surface);
 
   const inputLabel = document.createElement('label');
   inputLabel.htmlFor = inputId;
-  inputLabel.textContent = 'What should change?';
+  inputLabel.textContent = l10n.t('What should change?');
   const feedbackInput = document.createElement('textarea');
   feedbackInput.id = inputId;
   feedbackInput.value = options.initialFeedback ?? '';
@@ -1134,11 +1140,11 @@ export function createFeedbackAnnotationModal(
 
   const actions = document.createElement('div');
   actions.className = 'feedback-annotation-actions';
-  const retakeButton = createButton('Retake screenshot', 'Retake');
+  const retakeButton = createButton(l10n.t('Retake screenshot'), l10n.t('Retake'));
   retakeButton.dataset.feedbackAction = 'retake';
-  const cancelButton = createButton('Cancel screenshot feedback', 'Cancel');
+  const cancelButton = createButton(l10n.t('Cancel screenshot feedback'), l10n.t('Cancel'));
   cancelButton.dataset.feedbackAction = 'cancel';
-  const addButton = createButton('Add screenshot feedback', 'Add feedback');
+  const addButton = createButton(l10n.t('Add screenshot feedback'), l10n.t('Add feedback'));
   addButton.dataset.feedbackAction = 'add';
   actions.append(retakeButton, cancelButton, addButton);
 
@@ -1162,10 +1168,10 @@ export function createFeedbackAnnotationModal(
 
   function updateCancelState(): void {
     const dirty = feedbackInput.value.trim().length > 0 || history.commands.length > 0;
-    cancelButton.textContent = dirty ? 'Discard' : 'Cancel';
+    cancelButton.textContent = dirty ? l10n.t('Discard') : l10n.t('Cancel');
     cancelButton.setAttribute(
       'aria-label',
-      dirty ? 'Discard screenshot feedback' : 'Cancel screenshot feedback'
+      dirty ? l10n.t('Discard screenshot feedback') : l10n.t('Cancel screenshot feedback')
     );
   }
 
@@ -1187,7 +1193,7 @@ export function createFeedbackAnnotationModal(
     if (feedbackInput.value.trim().length > 0 && !stickySubmissionError) {
       if (imageDecodeFailed) {
         feedbackInput.setAttribute('aria-invalid', 'true');
-        validation.textContent = IMAGE_DECODE_ERROR_MESSAGE;
+        validation.textContent = imageDecodeErrorMessage();
       } else {
         feedbackInput.removeAttribute('aria-invalid');
         validation.textContent = '';
@@ -1420,7 +1426,7 @@ export function createFeedbackAnnotationModal(
     if (destroyed || busy) return false;
     const feedback = feedbackInput.value.trim();
     if (!feedback) {
-      reportError(new Error('Feedback is required.'), 'Describe what should change.');
+      reportError(new Error('Feedback is required.'), l10n.t('Describe what should change.'));
       feedbackInput.focus();
       updateSubmissionState();
       return false;
@@ -1432,7 +1438,7 @@ export function createFeedbackAnnotationModal(
       await imageDecoded;
     } catch (error) {
       busy = false;
-      reportError(error, IMAGE_DECODE_ERROR_MESSAGE);
+      reportError(error, imageDecodeErrorMessage());
       updateSubmissionState();
       return false;
     }
@@ -1445,7 +1451,7 @@ export function createFeedbackAnnotationModal(
       return true;
     } catch (error) {
       busy = false;
-      reportError(error, 'Could not add this screenshot. Your feedback is still here.');
+      reportError(error, l10n.t('Could not add this screenshot. Your feedback is still here.'));
       updateSubmissionState();
       return false;
     }
@@ -1464,7 +1470,7 @@ export function createFeedbackAnnotationModal(
       return true;
     } catch (error) {
       busy = false;
-      reportError(error, 'Could not restart capture. Try again.');
+      reportError(error, l10n.t('Could not restart capture. Try again.'));
       updateSubmissionState();
       feedbackInput.focus();
       return false;
@@ -1494,9 +1500,10 @@ export function createFeedbackAnnotationModal(
       return;
     }
     const confirmation = createFeedbackDiscardDialog({
-      description:
-        'Your unfinished comment and annotations will be lost. Saved feedback and the Feedback session will remain.',
-      confirmLabel: 'Discard capture',
+      description: l10n.t(
+        'Your unfinished comment and annotations will be lost. Saved feedback and the Feedback session will remain.'
+      ),
+      confirmLabel: l10n.t('Discard capture'),
       returnFocus: feedbackInput,
       suspendedSurface: dialog,
     });
@@ -1561,7 +1568,7 @@ export function createFeedbackAnnotationModal(
     error => {
       imageDecodeFailed = true;
       if (!destroyed && !busy) {
-        reportError(error, IMAGE_DECODE_ERROR_MESSAGE);
+        reportError(error, imageDecodeErrorMessage());
         updateSubmissionState();
       }
     }

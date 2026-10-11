@@ -3,7 +3,10 @@ import { Editor } from '@tiptap/core';
 import CodeBlock from '@tiptap/extension-code-block';
 import { TableKit } from '@tiptap/extension-table';
 import StarterKit from '@tiptap/starter-kit';
+import { readFileSync } from 'fs';
+import * as path from 'path';
 import { createFeedbackReviewController } from '../../webview/features/feedbackReview';
+import * as l10n from '../../webview/l10n';
 
 describe('Semantic Feedback scopes with a real editor', () => {
   beforeEach(() => window.getSelection()?.removeAllRanges());
@@ -241,6 +244,71 @@ describe('Semantic Feedback scopes with a real editor', () => {
       controller.deactivate();
       editor.destroy();
       document.body.replaceChildren();
+    }
+  });
+  it('never sends translated UI text to the host, where it would be stored in the bundle', async () => {
+    // Pseudo-translate every message so any translated text is recognizable by its marker.
+    const english = JSON.parse(
+      readFileSync(path.resolve(__dirname, '../../../l10n/bundle.l10n.json'), 'utf8')
+    ) as Record<string, string | { message: string }>;
+    l10n.configureL10n(
+      Object.fromEntries(
+        Object.entries(english).map(([key, value]) => [
+          key,
+          `\u00a7${typeof value === 'string' ? value : value.message}\u00a7`,
+        ])
+      )
+    );
+    document.body.innerHTML = '<main><div id="editor"></div></main>';
+    const editor = new Editor({
+      element: document.querySelector('#editor') as HTMLElement,
+      extensions: [StarterKit],
+      content:
+        '<ul><li><p>Parent</p><ul><li><p>Child</p></li></ul></li><li><p>Sibling</p></li></ul>',
+    });
+    const host = { postMessage: jest.fn() };
+    const controller = createFeedbackReviewController({ editor, host });
+    editor.view.dom.querySelectorAll('*').forEach(element => {
+      element.getBoundingClientRect = () =>
+        ({ left: 80, top: 100, right: 700, bottom: 300, width: 620, height: 200 }) as DOMRect;
+    });
+    try {
+      controller.activate({
+        sessionId: 'nested',
+        source: 'test.md',
+        sourceSha256: 'a'.repeat(64),
+        round: 'round-1',
+        evidenceVersion: 2,
+        anchors: [{ ordinal: 0, startLine: 1, endLine: 4 }],
+        items: [],
+      });
+      editor.view.dom
+        .querySelector('p')!
+        .dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const rail = document.querySelector<HTMLButtonElement>('[data-feedback-block-action]')!;
+      // The UI itself is translated ...
+      expect(rail.getAttribute('aria-label')).toContain('\u00a7');
+      rail.click();
+      const form = document.querySelector<HTMLFormElement>('.feedback-composer')!;
+      expect(form.textContent).toContain('\u00a7Item and children\u00a7');
+      const field = form.querySelector<HTMLTextAreaElement>('textarea')!;
+      field.value = 'Improve this item';
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      // ... but what goes to the host is document text and English protocol values only.
+      expect(host.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'feedback.text.add',
+          evidence: { kind: 'rendered-text', text: 'ParentChild', complete: true },
+        })
+      );
+      expect(JSON.stringify(host.postMessage.mock.calls)).not.toContain('\u00a7');
+    } finally {
+      controller.deactivate();
+      editor.destroy();
+      document.body.replaceChildren();
+      l10n.resetL10n();
     }
   });
   it('keeps a nested item targeted while the pointer crosses its indent toward the rail action', async () => {

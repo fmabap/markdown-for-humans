@@ -7,6 +7,7 @@ import {
   buildFeedbackTableCellEvidence,
   fingerprintFeedbackTable,
 } from './feedbackSelectionMapping';
+import * as l10n from '../l10n';
 
 /** Resolve only a cell in a top-level, regular, mapped table. Unsupported grids stay whole-table. */
 export function feedbackTableScopes(
@@ -30,13 +31,13 @@ export function feedbackTableScopes(
     const map = TableMap.get(table);
     const cell = map.findCell(resolved.before(cellDepth) - resolved.start(1));
     const rectangles = [
-      { label: 'Current cell', value: cell },
+      { label: l10n.t('Current cell'), value: cell },
       {
-        label: 'Full row',
+        label: l10n.t('Full row'),
         value: { top: cell.top, bottom: cell.bottom, left: 0, right: map.width },
       },
       {
-        label: 'Full column',
+        label: l10n.t('Full column'),
         value: { top: 0, bottom: map.height, left: cell.left, right: cell.right },
       },
     ];

@@ -5,6 +5,7 @@
  */
 
 import { SUPPORTED_GRAMMARS } from './languageRegistry';
+import * as l10n from '../l10n';
 
 export interface TokenSpan {
   from: number;
@@ -185,15 +186,15 @@ export function explainHighlightFailure(reason: string): string {
     case 'disposed':
       return '';
     case 'source-limit':
-      return 'This code block is too large to highlight. Its text remains editable.';
+      return l10n.t('This code block is too large to highlight. Its text remains editable.');
     case 'range-limit':
     case 'result-limit':
-      return 'This code block has too many tokens to highlight. Its text remains editable.';
+      return l10n.t('This code block has too many tokens to highlight. Its text remains editable.');
     case 'worker-timeout':
-      return 'Highlighting took too long. The code remains editable.';
+      return l10n.t('Highlighting took too long. The code remains editable.');
     case 'busy':
-      return 'Highlighting is waiting for another code block.';
+      return l10n.t('Highlighting is waiting for another code block.');
     default:
-      return 'Highlighting is unavailable for this code block. Its text remains editable.';
+      return l10n.t('Highlighting is unavailable for this code block. Its text remains editable.');
   }
 }

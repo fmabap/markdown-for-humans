@@ -16,6 +16,7 @@
 
 import type { Editor } from '@tiptap/core';
 import { showSvgDisplaySize } from './svgDisplaySize';
+import * as l10n from '../l10n';
 
 // Track currently open menu to close on outside click
 let currentOpenMenu: HTMLElement | null = null;
@@ -26,7 +27,7 @@ let currentOpenMenu: HTMLElement | null = null;
 export function createImageMenuButton(): HTMLButtonElement {
   const menuButton = document.createElement('button');
   menuButton.className = 'image-menu-button';
-  menuButton.setAttribute('aria-label', 'Image options');
+  menuButton.setAttribute('aria-label', l10n.t('Image options'));
   menuButton.setAttribute('aria-haspopup', 'true');
   menuButton.setAttribute('aria-expanded', 'false');
   menuButton.type = 'button';
@@ -54,11 +55,11 @@ export function createImageMenu(isLocal: boolean = true, isSvg: boolean = false)
   let menuHTML = `
     <div class="menu-item" role="menuitem" tabindex="0" data-action="${isSvg ? 'displaySize' : 'resize'}">
       <span class="codicon codicon-edit-sparkle menu-icon"></span>
-      <span class="menu-label">${isSvg ? 'Display size' : 'Resize'}</span>
+      <span class="menu-label">${l10n.html(isSvg ? 'Display size' : 'Resize')}</span>
     </div>
     <div class="menu-item" role="menuitem" tabindex="0" data-action="rename">
       <span class="codicon codicon-edit menu-icon"></span>
-      <span class="menu-label">Rename</span>
+      <span class="menu-label">${l10n.html('Rename')}</span>
     </div>
   `;
 
@@ -68,11 +69,11 @@ export function createImageMenu(isLocal: boolean = true, isSvg: boolean = false)
       <div class="menu-separator"></div>
       <div class="menu-item" role="menuitem" tabindex="0" data-action="openInFinder">
         <span class="codicon codicon-folder-opened menu-icon"></span>
-        <span class="menu-label">Open In Finder/Explorer</span>
+        <span class="menu-label">${l10n.html('Open In Finder/Explorer')}</span>
       </div>
       <div class="menu-item" role="menuitem" tabindex="0" data-action="showInWorkspace">
         <span class="codicon codicon-list-tree menu-icon"></span>
-        <span class="menu-label">Show In Workspace</span>
+        <span class="menu-label">${l10n.html('Show In Workspace')}</span>
       </div>
     `;
   }

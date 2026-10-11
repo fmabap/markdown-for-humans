@@ -1,5 +1,6 @@
 import { Schema } from '@tiptap/pm/model';
 import { createFeedbackSectionIndex } from '../../webview/features/feedbackSectionIndex';
+import * as l10n from '../../webview/l10n';
 
 const schema = new Schema({
   nodes: {
@@ -73,5 +74,18 @@ describe('Feedback section boundaries', () => {
       sections.ancestors(3);
     }
     expect(forEach).toHaveBeenCalledTimes(calls);
+  });
+});
+
+describe('Feedback section index localization', () => {
+  const untitled = () => index([schema.node('heading', { level: 2 }), p('body')]).section(0);
+  afterEach(() => l10n.resetL10n());
+  it('names a heading without text in English by default', () => {
+    expect(untitled()?.label).toBe('Untitled section');
+  });
+  it('translates the name of a heading without text and keeps heading text as written', () => {
+    l10n.configureL10n({ 'Untitled section': 'Section sans titre' });
+    expect(untitled()?.label).toBe('Section sans titre');
+    expect(index([h(2, 'Mocks'), p('body')]).section(0)?.label).toBe('Mocks');
   });
 });

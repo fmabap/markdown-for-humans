@@ -2,12 +2,11 @@
  * @jest-environment node
  */
 
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import * as vscode from 'vscode';
 import { getActiveWebviewPanel } from '../../activeWebview';
 import { activate } from '../../extension';
 import { sendFeedbackCommand } from '../../feedbackCommandReadiness';
+import { readResolvedManifest } from '../l10n/resolvedManifest';
 jest.mock('../../feedbackCommandReadiness', () => ({
   sendFeedbackCommand: jest.fn(async () => true),
 }));
@@ -91,14 +90,12 @@ const FEEDBACK_COMMANDS = [
 ] as const;
 
 describe('Feedback public commands', () => {
-  const packageJson = JSON.parse(
-    readFileSync(resolve(__dirname, '../../../package.json'), 'utf8')
-  ) as {
+  const packageJson = readResolvedManifest<{
     contributes: {
       commands: Array<{ command: string; title: string }>;
       keybindings?: Array<{ command: string }>;
     };
-  };
+  }>();
 
   beforeEach(() => {
     jest.clearAllMocks();

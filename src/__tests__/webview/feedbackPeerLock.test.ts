@@ -6,6 +6,7 @@ import type { Editor } from '@tiptap/core';
 import { readFileSync } from 'fs';
 import * as path from 'path';
 import { createFeedbackPeerLockController } from '../../webview/features/feedbackPeerLock';
+import * as l10n from '../../webview/l10n';
 
 const editorCss = readFileSync(path.resolve(__dirname, '../../webview/editor.css'), 'utf8');
 
@@ -246,6 +247,31 @@ describe('Feedback peer split lock', () => {
     expect(editorCss).not.toMatch(/^\.markdown-editor\s*\{[^}]*caret-color:\s*transparent/m);
     expect(editorCss).toMatch(
       /vscode-high-contrast\.feedback-peer-locked[\s\S]*?box-shadow:\s*inset 0 0 0 2px/
+    );
+  });
+});
+
+describe('Feedback peer split lock localization', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+    document.body.className = '';
+    l10n.resetL10n();
+  });
+  const actionText = (): string | null | undefined => {
+    const { controller } = createFixture();
+    controller.lock('lock-1', 'Feedback is active in another editor split.');
+    return document.querySelector('.feedback-peer-lock-action')?.textContent;
+  };
+
+  it('shows English when no bundle is loaded', () => {
+    expect(actionText()).toBe('Go to active feedback');
+  });
+
+  it('translates the navigation action and shows the given message as it is', () => {
+    l10n.configureL10n({ 'Go to active feedback': 'Aller au commentaire actif' });
+    expect(actionText()).toBe('Aller au commentaire actif');
+    expect(document.querySelector('.feedback-peer-lock-message')?.textContent).toBe(
+      'Feedback is active in another editor split.'
     );
   });
 });

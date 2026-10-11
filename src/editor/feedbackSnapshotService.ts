@@ -2,7 +2,8 @@
  * @file feedbackSnapshotService.ts - Atomic Feedback snapshot verification
  * @description Proves that one saved source, document version, renderer state,
  *              split set, and canonical block set describe the same content.
- *              The service performs no I/O and has no VS Code dependency.
+ *              The service performs no I/O; it uses VS Code only to translate
+ *              the failure details a user reads.
  *
  * Key responsibilities:
  * - Bind exact TextDocument text and saved bytes to separate SHA-256 digests
@@ -12,6 +13,7 @@
  */
 
 import { createHash } from 'crypto';
+import * as vscode from 'vscode';
 import MarkdownIt from 'markdown-it';
 import {
   buildFeedbackAnchorMap,
@@ -397,7 +399,7 @@ export class FeedbackSnapshotService {
     if (input.capturedDocumentVersion !== input.currentDocumentVersion) {
       return failure(
         'stale-document-version',
-        'The document version changed before the saved source could be bound.'
+        vscode.l10n.t('The document version changed before the saved source could be bound.')
       );
     }
 
@@ -435,7 +437,7 @@ export class FeedbackSnapshotService {
     if (input.currentDocumentVersion !== input.source.documentVersion) {
       return failure(
         'stale-document-version',
-        'The document version changed after the source snapshot was saved.'
+        vscode.l10n.t('The document version changed after the source snapshot was saved.')
       );
     }
 
@@ -533,8 +535,12 @@ export class FeedbackSnapshotService {
       return failure(
         'block-map-mismatch',
         listSplit
-          ? 'Feedback could not match this document to the saved file. If a list mixes plain and task items, split it into two lists and try again.'
-          : 'Feedback could not match this document to the saved file, so it did not start. The file was not changed. The known issues list on GitHub names the content Feedback cannot review yet.'
+          ? vscode.l10n.t(
+              'Feedback could not match this document to the saved file. If a list mixes plain and task items, split it into two lists and try again.'
+            )
+          : vscode.l10n.t(
+              'Feedback could not match this document to the saved file, so it did not start. The file was not changed. The known issues list on GitHub names the content Feedback cannot review yet.'
+            )
       );
     }
 

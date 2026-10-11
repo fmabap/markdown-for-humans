@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 
 import { createFeedbackDiscardDialog } from '../../webview/features/feedbackDiscardDialog';
+import * as l10n from '../../webview/l10n';
 
 describe('Feedback discard confirmation dialog', () => {
   beforeEach(() => {
@@ -122,5 +123,49 @@ describe('Feedback discard confirmation dialog', () => {
     await expect(confirmation.result).resolves.toBe(false);
     expect(confirmation.element.isConnected).toBe(false);
     expect(document.activeElement).not.toBe(field);
+  });
+});
+
+describe('Feedback discard confirmation dialog localization', () => {
+  let confirmation: ReturnType<typeof createFeedbackDiscardDialog> | undefined;
+  const dialogTexts = (): (string | null | undefined)[] => {
+    confirmation = createFeedbackDiscardDialog({
+      description: 'Your unfinished comment will be lost.',
+      returnFocus: document.body,
+    });
+    const dialog = confirmation.element;
+    return [
+      '.feedback-discard-title',
+      '[data-feedback-discard-keep]',
+      '[data-feedback-discard-confirm]',
+    ].map(selector => dialog.querySelector(selector)?.textContent);
+  };
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+  afterEach(() => {
+    confirmation?.destroy();
+    l10n.resetL10n();
+  });
+
+  it('shows English when no bundle is loaded', () => {
+    expect(dialogTexts()).toEqual([
+      'Discard unfinished feedback?',
+      'Keep editing',
+      'Discard feedback',
+    ]);
+  });
+
+  it('translates the default title and button labels', () => {
+    // Leaves out "Keep editing" on purpose, to exercise the fallback to English.
+    l10n.configureL10n({
+      'Discard unfinished feedback?': 'Abandonner le commentaire en cours ?',
+      'Discard feedback': 'Abandonner le commentaire',
+    });
+    expect(dialogTexts()).toEqual([
+      'Abandonner le commentaire en cours ?',
+      'Keep editing',
+      'Abandonner le commentaire',
+    ]);
   });
 });

@@ -10,6 +10,8 @@
  * - Fall back with a structured warning when configuration is invalid
  */
 
+import * as vscode from 'vscode';
+
 /** Full VS Code setting key for the resource-scoped handoff prompt template. */
 export const FEEDBACK_HANDOFF_PROMPT_TEMPLATE_SETTING =
   'markdownForHumans.feedback.handoffPromptTemplate';
@@ -112,16 +114,19 @@ export function renderFeedbackHandoffPrompt(
   if (typeof configuredTemplate !== 'string') {
     return fallback(values, {
       code: 'invalid-template-type',
-      message: 'The configured value must be text. The default prompt was used instead.',
+      message: vscode.l10n.t(
+        'The configured value must be text. The default prompt was used instead.'
+      ),
     });
   }
 
   if (configuredTemplate.length > MAX_FEEDBACK_HANDOFF_TEMPLATE_LENGTH) {
     return fallback(values, {
       code: 'template-too-long',
-      message: `The feedback handoff prompt template exceeds ${MAX_FEEDBACK_HANDOFF_TEMPLATE_LENGTH.toLocaleString(
-        'en-US'
-      )} UTF-16 code units. The default prompt was used instead.`,
+      message: vscode.l10n.t(
+        'The feedback handoff prompt template exceeds {0} UTF-16 code units. The default prompt was used instead.',
+        MAX_FEEDBACK_HANDOFF_TEMPLATE_LENGTH.toLocaleString(vscode.env.language || undefined)
+      ),
     });
   }
 
@@ -129,7 +134,9 @@ export function renderFeedbackHandoffPrompt(
   if (hasUnsafeControlCharacter(normalizedTemplate)) {
     return fallback(values, {
       code: 'unsafe-control-character',
-      message: 'It contains unsupported control characters. The default prompt was used instead.',
+      message: vscode.l10n.t(
+        'It contains unsupported control characters. The default prompt was used instead.'
+      ),
     });
   }
 
@@ -137,8 +144,9 @@ export function renderFeedbackHandoffPrompt(
   if (!parsedPlaceholders.ok) {
     return fallback(values, {
       code: 'malformed-placeholder',
-      message:
-        'It contains unmatched or nested placeholder delimiters. The default prompt was used instead.',
+      message: vscode.l10n.t(
+        'It contains unmatched or nested placeholder delimiters. The default prompt was used instead.'
+      ),
     });
   }
 
@@ -149,14 +157,20 @@ export function renderFeedbackHandoffPrompt(
   if (unknownPlaceholder !== undefined) {
     return fallback(values, {
       code: 'unknown-placeholder',
-      message: `It uses the unknown placeholder "{{${unknownPlaceholder}}}". The default prompt was used instead.`,
+      message: vscode.l10n.t(
+        'It uses the unknown placeholder "{0}". The default prompt was used instead.',
+        `{{${unknownPlaceholder}}}`
+      ),
     });
   }
 
   if (!placeholders.includes('feedbackFile')) {
     return fallback(values, {
       code: 'missing-required-placeholder',
-      message: 'It must include "{{feedbackFile}}". The default prompt was used instead.',
+      message: vscode.l10n.t(
+        'It must include "{0}". The default prompt was used instead.',
+        '{{feedbackFile}}'
+      ),
     });
   }
 
@@ -164,9 +178,10 @@ export function renderFeedbackHandoffPrompt(
   if (prompt.length > MAX_FEEDBACK_HANDOFF_PROMPT_LENGTH) {
     return fallback(values, {
       code: 'expanded-prompt-too-long',
-      message: `The expanded feedback handoff prompt exceeds ${MAX_FEEDBACK_HANDOFF_PROMPT_LENGTH.toLocaleString(
-        'en-US'
-      )} UTF-16 code units. The default prompt was used instead.`,
+      message: vscode.l10n.t(
+        'The expanded feedback handoff prompt exceeds {0} UTF-16 code units. The default prompt was used instead.',
+        MAX_FEEDBACK_HANDOFF_PROMPT_LENGTH.toLocaleString(vscode.env.language || undefined)
+      ),
     });
   }
 

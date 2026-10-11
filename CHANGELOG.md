@@ -17,7 +17,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - The right-click menu now reliably shows Cut, Copy and **Add Selection to GitHub Copilot** when you right-click a selection. Clicking a middle line of a multi-line selection used to collapse the selection first (the menu then showed only Paste and Select All).
 - Cut shows its scissors icon in the right-click menu. The icon slot was empty because the Codicons icon font has no scissors glyph; the mark is drawn inline now.
-- The "Feedback is not ready" warning says to reopen the editor if it stays blank. It only said to wait for the editor to load, which does not help when the editor never finished starting.
 
 ---
 
@@ -25,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- **Font and readability settings.** Choose the font you read best in, for example a font designed for dyslexia or low vision. `markdownForHumans.font.family` takes any font installed on your computer, and `font.weight`, `font.lineHeight`, `font.letterSpacing` and `font.wordSpacing` adjust body text. Changes apply at once to every open editor. Code stays monospace, and math and diagrams keep their own fonts. `markdownForHumans.font.useEditorFont` uses your VS Code editor font instead, including `"[markdown]"` overrides of `editor.fontFamily`, `editor.fontWeight` and `editor.fontSize`. Nothing changes until you set one of these, and PDF and Word exports keep their own fonts.
+- **Five more languages: Simplified Chinese, Japanese, Spanish, Brazilian Portuguese and Russian.** The editor follows your VS Code display language: toolbar, menus, dialogs, messages, command names and setting descriptions are translated. Run **Configure Display Language** to switch. The translations were drafted and cross-checked by AI against VS Code's own wording and have not had a native review yet; corrections are welcome, see `l10n/README.md`. Any other display language shows English. Feedback files and the prompt handed to your AI agent stay in English.
 - **ABAP syntax highlighting for code blocks.** ` ```abap ` fences are highlighted (keywords, strings, comments), and ABAP is available in the code block language menu. `sap-abap` works as a fence alias. The grammar comes from the community `highlightjs-sap-abap` package, since highlight.js itself ships no ABAP grammar.
 
 ### Fixed
@@ -35,6 +36,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Word export keeps code blocks (one monospace line each) and block math (as its LaTeX source). Both were dropped from the document.
 - Word export shows checklist items as ☐ and ☑ instead of the hidden "Task item checkbox for ..." text.
 - The toolbar gear is labeled "Extension settings"; it was labeled "Export settings" but opens the extension's settings.
+- The word count counts Chinese and Japanese text by character, the way word processors do. A whole sentence counted as one word, so the count and the reading time were close to zero.
+- The status bar says "1 word", not "1 words".
+- Feedback toolbar buttons no longer run into each other in a narrow editor, for example in a split view. When the labels do not fit, the buttons show icons, and each keeps its name as a tooltip.
+- The Bold, Italic and Strikethrough buttons show a letter that matches your language instead of always B, I and S.
+- The "Feedback is not ready" warning says to reopen the editor if it stays blank. It only said to wait for the editor to load, which does not help when the editor never finished starting.
 
 ---
 

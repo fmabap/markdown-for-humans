@@ -148,7 +148,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.ConfigurationTarget.Global
       );
       vscode.window.setStatusBarMessage(
-        `Markdown Editor for Humans: formatting shortcuts ${!current ? 'enabled' : 'disabled'}`,
+        !current
+          ? vscode.l10n.t('Markdown Editor for Humans: formatting shortcuts enabled')
+          : vscode.l10n.t('Markdown Editor for Humans: formatting shortcuts disabled'),
         3000
       );
     })

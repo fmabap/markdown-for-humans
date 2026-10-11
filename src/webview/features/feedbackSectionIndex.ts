@@ -1,6 +1,7 @@
 /** Frozen, top-level heading intervals. Never traverse the document during hover. */
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { FeedbackBlockActionAnchor } from './feedbackBlockAction';
+import * as l10n from '../l10n';
 
 export interface FeedbackSection {
   readonly startOrdinal: number;
@@ -45,7 +46,7 @@ export function createFeedbackSectionIndex(
       stack.push({
         ordinal,
         level,
-        label: node.textContent.trim().slice(0, 120) || 'Untitled section',
+        label: node.textContent.trim().slice(0, 120) || l10n.t('Untitled section'),
         invalidBefore: invalid,
       });
     }

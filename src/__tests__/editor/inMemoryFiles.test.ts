@@ -36,6 +36,13 @@ jest.mock('vscode', () => ({
     executeCommand: jest.fn(),
     registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
   },
+  l10n: {
+    t: (message: string, ...args: unknown[]) =>
+      message.replace(/\{(\d+)\}/g, (m, i) =>
+        args[Number(i)] === undefined ? m : String(args[Number(i)])
+      ),
+    bundle: undefined,
+  },
   window: {
     showInformationMessage: jest.fn(),
     showErrorMessage: jest.fn(),

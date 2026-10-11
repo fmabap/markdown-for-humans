@@ -92,6 +92,7 @@ import {
   getFeedbackTargetPresentation,
   type FeedbackTargetPresentationReason,
 } from './feedbackTargetPresentation';
+import * as l10n from '../l10n';
 
 type FeedbackMarkdownSerializer = {
   serialize?: (json: JSONContent) => string;
@@ -1339,24 +1340,24 @@ export function createFeedbackReviewController(options: {
   showDraftSurfaceAttention = (surface): void => {
     const element = surface.element;
     const instruction = element?.matches('[data-feedback-discard-dialog]')
-      ? 'Keep editing or discard your current comment first.'
+      ? l10n.t('Keep editing or discard your current comment first.')
       : surface.kind === 'text-composer'
         ? element?.querySelector<HTMLTextAreaElement>('[data-feedback-input]')?.readOnly
-          ? 'Wait for your current comment to finish saving.'
-          : 'Add or cancel your current comment first.'
+          ? l10n.t('Wait for your current comment to finish saving.')
+          : l10n.t('Add or cancel your current comment first.')
         : surface.kind === 'feedback-edit'
           ? editDraft?.pendingRequestId
-            ? 'Wait for your current edit to finish saving.'
-            : 'Save or cancel your current edit first.'
+            ? l10n.t('Wait for your current edit to finish saving.')
+            : l10n.t('Save or cancel your current edit first.')
           : surface.kind === 'finish-checkpoint'
             ? pendingFinishRequestId
-              ? 'Wait for Feedback to finish saving.'
-              : 'Resume feedback or finish the current completion step first.'
+              ? l10n.t('Wait for Feedback to finish saving.')
+              : l10n.t('Resume feedback or finish the current completion step first.')
             : surface.kind === 'text-block-selector'
-              ? 'Choose blocks or cancel the current selection first.'
+              ? l10n.t('Choose blocks or cancel the current selection first.')
               : surface.kind === 'capture-rasterizing'
-                ? 'Wait for the current capture to finish preparing.'
-                : 'Complete or cancel your current capture first.';
+                ? l10n.t('Wait for the current capture to finish preparing.')
+                : l10n.t('Complete or cancel your current capture first.');
     showSurfaceAttention(element, instruction);
     if (surface.kind === 'feedback-edit') {
       element?.scrollIntoView?.({ behavior: 'auto', block: 'nearest' });
@@ -1380,7 +1381,7 @@ export function createFeedbackReviewController(options: {
     );
     if (!button) return;
     button.disabled = false;
-    button.textContent = 'Retry';
+    button.textContent = l10n.t('Retry');
     button.focus({ preventScroll: true });
   };
 
@@ -1392,15 +1393,15 @@ export function createFeedbackReviewController(options: {
     removeSyncRetryAlert();
     syncRetryAlert = createElement('section', 'feedback-sync-retry-alert');
     syncRetryAlert.setAttribute('role', 'alert');
-    syncRetryAlert.setAttribute('aria-label', 'Feedback source restore failed');
+    syncRetryAlert.setAttribute('aria-label', l10n.t('Feedback source restore failed'));
     const status = createElement('span', 'feedback-sync-retry-message', message);
-    const button = createElement('button', 'feedback-secondary-button', 'Retry');
+    const button = createElement('button', 'feedback-secondary-button', l10n.t('Retry'));
     button.type = 'button';
     button.setAttribute(`data-feedback-${kind}-retry`, '');
-    button.setAttribute('aria-label', 'Retry restoring the latest Markdown source');
+    button.setAttribute('aria-label', l10n.t('Retry restoring the latest Markdown source'));
     button.addEventListener('click', () => {
       button.disabled = true;
-      button.textContent = 'Retrying…';
+      button.textContent = l10n.t('Retrying…');
       retry();
     });
     syncRetryAlert.append(status, button);
@@ -1527,32 +1528,51 @@ export function createFeedbackReviewController(options: {
     draftBanner.setAttribute('role', 'region');
     draftBanner.setAttribute(
       'aria-label',
-      isActiveOffer ? 'Resume Feedback session' : 'Available Feedback drafts'
+      isActiveOffer ? l10n.t('Resume Feedback session') : l10n.t('Available Feedback drafts')
     );
     const copy = createElement('div', 'feedback-draft-copy');
     const title = createElement(
       'strong',
       'feedback-draft-title',
       isPeerOffer
-        ? 'Feedback is active in another rich view'
+        ? l10n.t('Feedback is active in another rich view')
         : isActiveOffer
-          ? 'Resume Feedback session?'
-          : 'Feedback draft available'
+          ? l10n.t('Resume Feedback session?')
+          : l10n.t('Feedback draft available')
     );
     const detail = createElement('span', 'feedback-draft-detail');
     detail.setAttribute('aria-live', 'polite');
     const updateDetail = (): void => {
-      const countLabel = `${selectedDraft.itemCount} ${
-        selectedDraft.itemCount === 1 ? 'comment' : 'comments'
-      }`;
+      const count = selectedDraft.itemCount;
       detail.textContent =
         renderedDrafts.length === 1
           ? isPeerOffer
-            ? `${countLabel} ${selectedDraft.itemCount === 1 ? 'is' : 'are'} already saved. Resume here to move the Feedback session to this view.`
+            ? l10n.t(
+                count === 1
+                  ? '{0} comment is already saved. Resume here to move the Feedback session to this view.'
+                  : '{0} comments are already saved. Resume here to move the Feedback session to this view.',
+                count
+              )
             : isActiveOffer
-              ? `${countLabel} ${selectedDraft.itemCount === 1 ? 'is' : 'are'} already saved in this Feedback session.`
-              : `${countLabel} can be resumed from the saved snapshot.`
-          : `${renderedDrafts.length} matching drafts found. Selected draft has ${countLabel}.`;
+              ? l10n.t(
+                  count === 1
+                    ? '{0} comment is already saved in this Feedback session.'
+                    : '{0} comments are already saved in this Feedback session.',
+                  count
+                )
+              : l10n.t(
+                  count === 1
+                    ? '{0} comment can be resumed from the saved snapshot.'
+                    : '{0} comments can be resumed from the saved snapshot.',
+                  count
+                )
+          : l10n.t(
+              count === 1
+                ? '{0} matching drafts found. Selected draft has {1} comment.'
+                : '{0} matching drafts found. Selected draft has {1} comments.',
+              renderedDrafts.length,
+              count
+            );
     };
     updateDetail();
     copy.append(title);
@@ -1560,10 +1580,18 @@ export function createFeedbackReviewController(options: {
       const picker = document.createElement('select');
       picker.className = 'feedback-draft-picker';
       picker.setAttribute('data-feedback-draft-picker', '');
-      picker.setAttribute('aria-label', 'Choose a Feedback draft');
+      picker.setAttribute('aria-label', l10n.t('Choose a Feedback draft'));
       for (const draft of renderedDrafts) {
-        const countLabel = `${draft.itemCount} ${draft.itemCount === 1 ? 'comment' : 'comments'}`;
-        picker.add(new Option(`${draft.round} · ${countLabel}`, draft.round));
+        picker.add(
+          new Option(
+            l10n.t(
+              draft.itemCount === 1 ? '{0} · {1} comment' : '{0} · {1} comments',
+              draft.round,
+              draft.itemCount
+            ),
+            draft.round
+          )
+        );
       }
       picker.addEventListener('change', () => {
         selectedDraft =
@@ -1578,13 +1606,13 @@ export function createFeedbackReviewController(options: {
     const resume = createElement(
       'button',
       'feedback-primary-button',
-      isPeerOffer ? 'Resume here' : 'Resume'
+      isPeerOffer ? l10n.t('Resume here') : l10n.t('Resume')
     );
     resume.type = 'button';
     resume.setAttribute('data-feedback-draft-resume', '');
     resume.addEventListener('click', () => {
       if (session || startRequestId) return;
-      if (focusModalSurfaceBefore('starting Feedback')) return;
+      if (focusModalSurfaceBefore('start')) return;
       clearDraftSurfaceAttention();
       rememberTransitionFocus();
       setDraftBannerBusy(true);
@@ -1599,12 +1627,12 @@ export function createFeedbackReviewController(options: {
         round: selectedDraft.round,
       });
     });
-    const startNew = createElement('button', 'feedback-secondary-button', 'Start new');
+    const startNew = createElement('button', 'feedback-secondary-button', l10n.t('Start new'));
     startNew.type = 'button';
     startNew.setAttribute('data-feedback-start-new', '');
     startNew.addEventListener('click', () => {
       if (session || startRequestId || draftBannerMode !== 'saved') return;
-      if (focusModalSurfaceBefore('starting Feedback')) return;
+      if (focusModalSurfaceBefore('start')) return;
       clearDraftSurfaceAttention();
       rememberTransitionFocus();
       setDraftBannerBusy(true);
@@ -1615,7 +1643,7 @@ export function createFeedbackReviewController(options: {
       setFeedbackToolbarState({ active: false, starting: true });
       post({ type: 'feedback.start.new', requestId: startRequestId });
     });
-    const reveal = createElement('button', 'feedback-secondary-button', 'Reveal');
+    const reveal = createElement('button', 'feedback-secondary-button', l10n.t('Reveal'));
     reveal.type = 'button';
     reveal.addEventListener('click', () => {
       post({
@@ -1624,7 +1652,7 @@ export function createFeedbackReviewController(options: {
         round: selectedDraft.round,
       });
     });
-    const discard = createElement('button', 'feedback-secondary-button', 'Discard');
+    const discard = createElement('button', 'feedback-secondary-button', l10n.t('Discard'));
     discard.type = 'button';
     discard.addEventListener('click', () => {
       if (session || startRequestId) return;
@@ -1640,7 +1668,7 @@ export function createFeedbackReviewController(options: {
         round: selectedDraft.round,
       });
     });
-    const dismiss = createElement('button', 'feedback-secondary-button', 'Not now');
+    const dismiss = createElement('button', 'feedback-secondary-button', l10n.t('Not now'));
     dismiss.type = 'button';
     dismiss.addEventListener('click', () => {
       removeDraftBanner();
@@ -2027,7 +2055,9 @@ export function createFeedbackReviewController(options: {
         const target = materializeScope(candidate);
         if (!target) {
           announce(
-            'This scope cannot be represented as complete text. Choose its whole container or use area capture.'
+            l10n.t(
+              'This scope cannot be represented as complete text. Choose its whole container or use area capture.'
+            )
           );
           hideBlockAction(true);
           return;
@@ -2187,9 +2217,13 @@ export function createFeedbackReviewController(options: {
   };
 
   const feedbackCompletionCount = (count: number, locked: boolean): string => {
-    if (count === 0) return 'No feedback logged yet';
-    const noun = count === 1 ? 'feedback item' : 'feedback items';
-    return `${count} ${noun} ${locked ? 'locked' : 'ready to lock'}`;
+    if (count === 0) return l10n.t('No feedback logged yet');
+    return locked
+      ? l10n.t(count === 1 ? '{0} feedback item locked' : '{0} feedback items locked', count)
+      : l10n.t(
+          count === 1 ? '{0} feedback item ready to lock' : '{0} feedback items ready to lock',
+          count
+        );
   };
 
   const completionFocusableElements = (dialog: HTMLElement): HTMLElement[] =>
@@ -2320,7 +2354,7 @@ export function createFeedbackReviewController(options: {
     if (path) path.disabled = isFinishing;
     if (revealOS) revealOS.disabled = isFinishing;
     if (confirm) {
-      confirm.textContent = isFinishing ? 'Finishing…' : 'Finish & copy';
+      confirm.textContent = isFinishing ? l10n.t('Finishing…') : l10n.t('Finish & copy');
       confirm.disabled = isFinishing || invalidated || count === 0;
     }
   };
@@ -2358,12 +2392,14 @@ export function createFeedbackReviewController(options: {
     dialog.tabIndex = -1;
 
     const surface = createElement('div', 'feedback-annotation-panel feedback-completion-panel');
-    const title = createElement('h2', 'feedback-completion-title', 'Finish feedback?');
+    const title = createElement('h2', 'feedback-completion-title', l10n.t('Finish feedback?'));
     title.id = 'feedback-completion-title';
     const explanation = createElement(
       'p',
       'feedback-completion-description',
-      'This locks the saved feedback bundle, restores editing, and prepares the agent handoff.'
+      l10n.t(
+        'This locks the saved feedback bundle, restores editing, and prepares the agent handoff.'
+      )
     );
     explanation.id = 'feedback-completion-description';
     const count = createElement(
@@ -2373,22 +2409,22 @@ export function createFeedbackReviewController(options: {
     );
     count.id = 'feedback-completion-count';
     count.setAttribute('data-feedback-completion-count', '');
-    const pathLabel = createElement('p', 'feedback-completion-path-label', 'Feedback file');
+    const pathLabel = createElement('p', 'feedback-completion-path-label', l10n.t('Feedback file'));
     pathLabel.id = 'feedback-completion-path-label';
-    const fullFeedbackPath = session.feedbackFile ?? 'Feedback file path unavailable';
+    const fullFeedbackPath = session.feedbackFile ?? l10n.t('Feedback file path unavailable');
     const pathRow = createElement('div', 'feedback-completion-path-row');
     const path = createElement('button', 'feedback-composer-focus feedback-completion-path');
     path.type = 'button';
     path.id = 'feedback-completion-path';
     path.title = fullFeedbackPath;
     path.textContent = truncateFeedbackPathMiddle(fullFeedbackPath);
-    path.setAttribute('aria-label', `Open ${fullFeedbackPath} in the editor`);
+    path.setAttribute('aria-label', l10n.t('Open {0} in the editor', fullFeedbackPath));
     path.setAttribute('aria-describedby', pathLabel.id);
     path.setAttribute('data-feedback-completion-path', '');
     const revealOS = createElement('button', 'feedback-completion-reveal-os');
     revealOS.type = 'button';
-    revealOS.title = 'Reveal in Finder/Explorer';
-    revealOS.setAttribute('aria-label', 'Reveal feedback file in Finder/Explorer');
+    revealOS.title = l10n.t('Reveal in Finder/Explorer');
+    revealOS.setAttribute('aria-label', l10n.t('Reveal feedback file in Finder/Explorer'));
     revealOS.setAttribute('data-feedback-completion-reveal-os', '');
     const revealOSIcon = createElement('span', 'codicon codicon-folder-opened');
     revealOSIcon.setAttribute('aria-hidden', 'true');
@@ -2397,7 +2433,11 @@ export function createFeedbackReviewController(options: {
 
     const disclosure = createElement('details', 'feedback-completion-disclosure');
     disclosure.setAttribute('data-feedback-preview-state', 'idle');
-    const disclosureSummary = createElement('summary', '', 'What gets copied to your clipboard');
+    const disclosureSummary = createElement(
+      'summary',
+      '',
+      l10n.t('What gets copied to your clipboard')
+    );
     const previewCode = createElement('code', '');
     previewCode.setAttribute('data-feedback-completion-preview', '');
     const previewBody = createElement('pre', 'feedback-completion-preview');
@@ -2408,7 +2448,7 @@ export function createFeedbackReviewController(options: {
       const previewState = disclosure.getAttribute('data-feedback-preview-state');
       if (previewState === 'ready' || previewState === 'loading') return;
       disclosure.setAttribute('data-feedback-preview-state', 'loading');
-      previewCode.textContent = 'Loading preview…';
+      previewCode.textContent = l10n.t('Loading preview…');
       const requestId = nextRequestId();
       pendingPreviewRequestId = requestId;
       post({ type: 'feedback.finish.preview', requestId, sessionId: session.sessionId });
@@ -2421,10 +2461,10 @@ export function createFeedbackReviewController(options: {
     status.setAttribute('aria-atomic', 'true');
 
     const actions = createElement('div', 'feedback-annotation-actions feedback-completion-actions');
-    const resume = createElement('button', 'feedback-secondary-button', 'Resume feedback');
+    const resume = createElement('button', 'feedback-secondary-button', l10n.t('Resume feedback'));
     resume.type = 'button';
     resume.setAttribute('data-feedback-completion-resume', '');
-    const confirm = createElement('button', 'feedback-primary-button', 'Finish & copy');
+    const confirm = createElement('button', 'feedback-primary-button', l10n.t('Finish & copy'));
     confirm.type = 'button';
     confirm.setAttribute('data-feedback-action', 'add');
     confirm.setAttribute('data-feedback-completion-confirm', '');
@@ -2475,9 +2515,9 @@ export function createFeedbackReviewController(options: {
       resume.remove();
       path.disabled = true;
       revealOS.disabled = true;
-      confirm.textContent = 'Finishing…';
+      confirm.textContent = l10n.t('Finishing…');
       confirm.disabled = true;
-      status.textContent = 'Locking feedback and copying the agent handoff…';
+      status.textContent = l10n.t('Locking feedback and copying the agent handoff…');
       dialog.focus({ preventScroll: true });
       syncCommentsUi();
       // The checkpoint can remain open while NodeViews or editor state change.
@@ -2534,12 +2574,12 @@ export function createFeedbackReviewController(options: {
     dialog.tabIndex = -1;
 
     const surface = createElement('div', 'feedback-annotation-panel feedback-completion-panel');
-    const title = createElement('h2', 'feedback-completion-title', 'Feedback locked');
+    const title = createElement('h2', 'feedback-completion-title', l10n.t('Feedback locked'));
     title.id = 'feedback-completion-title';
     const explanation = createElement(
       'p',
       'feedback-completion-description',
-      'The sealed bundle is ready to share with an agent.'
+      l10n.t('The sealed bundle is ready to share with an agent.')
     );
     explanation.id = 'feedback-completion-description';
     const count = createElement(
@@ -2549,7 +2589,11 @@ export function createFeedbackReviewController(options: {
     );
     count.id = 'feedback-completion-count';
     count.setAttribute('data-feedback-completion-count', '');
-    const pathLabel = createElement('p', 'feedback-completion-path-label', 'Share this file');
+    const pathLabel = createElement(
+      'p',
+      'feedback-completion-path-label',
+      l10n.t('Share this file')
+    );
     pathLabel.id = 'feedback-completion-path-label';
     const path = createElement(
       'code',
@@ -2564,15 +2608,15 @@ export function createFeedbackReviewController(options: {
       'p',
       'feedback-completion-status',
       summary.promptCopied
-        ? 'Agent handoff copied'
-        : 'The bundle is safe, but the agent handoff was not copied.'
+        ? l10n.t('Agent handoff copied')
+        : l10n.t('The bundle is safe, but the agent handoff was not copied.')
     );
     status.id = 'feedback-completion-status';
     status.setAttribute('data-feedback-completion-status', '');
     status.setAttribute('aria-live', 'polite');
     status.setAttribute('aria-atomic', 'true');
     const actions = createElement('div', 'feedback-annotation-actions feedback-completion-actions');
-    const done = createElement('button', 'feedback-primary-button', 'Done');
+    const done = createElement('button', 'feedback-primary-button', l10n.t('Done'));
     done.type = 'button';
     done.setAttribute('data-feedback-action', 'add');
     done.setAttribute('data-feedback-completion-done', '');
@@ -2582,23 +2626,23 @@ export function createFeedbackReviewController(options: {
     };
     done.addEventListener('click', dismiss);
     if (!summary.promptCopied) {
-      const copyAgain = createElement('button', 'feedback-secondary-button', 'Copy again');
+      const copyAgain = createElement('button', 'feedback-secondary-button', l10n.t('Copy again'));
       copyAgain.type = 'button';
       copyAgain.setAttribute('data-feedback-completion-copy-again', '');
       copyAgain.addEventListener('click', () => {
         if (copyAgain.disabled) return;
         copyAgain.disabled = true;
-        status.textContent = 'Copying agent handoff…';
+        status.textContent = l10n.t('Copying agent handoff…');
         void (async () => {
           try {
             if (!navigator.clipboard) throw new Error('Clipboard API is unavailable');
             await navigator.clipboard.writeText(summary.prompt);
             summary.promptCopied = true;
-            status.textContent = 'Agent handoff copied';
+            status.textContent = l10n.t('Agent handoff copied');
             copyAgain.remove();
           } catch (error) {
             console.error('[MD4H] Feedback clipboard retry failed:', error);
-            status.textContent = 'Could not copy the agent handoff. Try again.';
+            status.textContent = l10n.t('Could not copy the agent handoff. Try again.');
             copyAgain.disabled = false;
             copyAgain.focus({ preventScroll: true });
           }
@@ -2747,7 +2791,7 @@ export function createFeedbackReviewController(options: {
     renderCards();
     scheduleAnnotationLayout();
     focus();
-    announce(`Editing feedback ${item.id}.`);
+    announce(l10n.t('Editing feedback {0}.', item.id));
   }
 
   const activateFeedbackItem = (
@@ -2802,12 +2846,12 @@ export function createFeedbackReviewController(options: {
     const heading = createElement(
       'h2',
       'feedback-panel-title',
-      `Comments · ${session.items.length}`
+      l10n.t('Comments · {0}', session.items.length)
     );
     const collapse = createElement('button', 'feedback-panel-collapse', '×');
     collapse.type = 'button';
-    collapse.title = 'Collapse comment details';
-    collapse.setAttribute('aria-label', 'Collapse comment details');
+    collapse.title = l10n.t('Collapse comment details');
+    collapse.setAttribute('aria-label', l10n.t('Collapse comment details'));
     collapse.setAttribute('data-feedback-panel-collapse', '');
     collapse.addEventListener('click', () => collapseRail(true));
     header.append(heading, collapse);
@@ -2824,7 +2868,11 @@ export function createFeedbackReviewController(options: {
           .map(mutation => mutation.id)
       );
       for (const deleted of deletedItems.values()) {
-        const undo = createElement('button', 'feedback-undo-delete', `Undo delete ${deleted.id}`);
+        const undo = createElement(
+          'button',
+          'feedback-undo-delete',
+          l10n.t('Undo delete {0}', deleted.id)
+        );
         undo.type = 'button';
         undo.disabled = !hasWritableSession() || pendingRestoreIds.has(deleted.id);
         undo.setAttribute('data-feedback-undo-id', deleted.id);
@@ -2868,7 +2916,7 @@ export function createFeedbackReviewController(options: {
       if (!isActive) {
         card.tabIndex = 0;
         card.setAttribute('role', 'button');
-        card.setAttribute('aria-label', `Open feedback ${item.id}`);
+        card.setAttribute('aria-label', l10n.t('Open feedback {0}', item.id));
         const preview = createElement(
           'p',
           'feedback-card-preview',
@@ -2876,8 +2924,8 @@ export function createFeedbackReviewController(options: {
             (item.kind === 'text' && item.focus?.trim()
               ? item.focus
               : item.kind === 'screenshot'
-                ? 'Annotated screenshot'
-                : 'Feedback saved')
+                ? l10n.t('Annotated screenshot')
+                : l10n.t('Feedback saved'))
         );
         const activateCompactCard = (): void => {
           activateFeedbackItem(item.id);
@@ -2928,16 +2976,20 @@ export function createFeedbackReviewController(options: {
               focusAttribute: 'data-feedback-card-focus',
             })
           : null;
-      const body = createElement('p', 'feedback-card-body', item.feedback ?? 'Feedback saved');
+      const body = createElement(
+        'p',
+        'feedback-card-body',
+        item.feedback ?? l10n.t('Feedback saved')
+      );
       const actions = createElement('div', 'feedback-card-actions');
       let capturePreview: HTMLElement | null = null;
       if (item.kind === 'screenshot') {
         capturePreview = createElement('figure', 'feedback-card-capture');
-        capturePreview.setAttribute('aria-label', `Annotated capture for ${item.id}`);
+        capturePreview.setAttribute('aria-label', l10n.t('Annotated capture for {0}', item.id));
         const unavailable = createElement(
           'p',
           'feedback-card-capture-error',
-          'Capture preview unavailable. The saved PNG remains in the feedback bundle.'
+          l10n.t('Capture preview unavailable. The saved PNG remains in the feedback bundle.')
         );
         unavailable.setAttribute('data-feedback-card-image-error', '');
 
@@ -2945,7 +2997,7 @@ export function createFeedbackReviewController(options: {
           const image = createElement('img', 'feedback-card-capture-image');
           image.setAttribute('data-feedback-card-image', '');
           image.src = item.imageUri;
-          image.alt = `Annotated capture for feedback ${item.id}`;
+          image.alt = l10n.t('Annotated capture for feedback {0}', item.id);
           image.setAttribute('loading', 'lazy');
           image.setAttribute('decoding', 'async');
           image.draggable = false;
@@ -2958,7 +3010,7 @@ export function createFeedbackReviewController(options: {
           image.addEventListener('error', () => {
             image.hidden = true;
             unavailable.hidden = false;
-            announce(`Capture preview unavailable for ${item.id}.`);
+            announce(l10n.t('Capture preview unavailable for {0}.', item.id));
           });
           capturePreview.append(image, unavailable);
         } else {
@@ -2966,14 +3018,14 @@ export function createFeedbackReviewController(options: {
         }
       }
       const isPendingDelete = pendingDeleteIds.has(item.id);
-      const edit = createElement('button', 'feedback-card-action', 'Edit');
+      const edit = createElement('button', 'feedback-card-action', l10n.t('Edit'));
       edit.type = 'button';
       edit.disabled = !hasWritableSession() || isPendingDelete;
       edit.setAttribute('data-feedback-edit-action', item.id);
       edit.addEventListener('click', () => {
         openFeedbackEdit(item);
       });
-      const remove = createElement('button', 'feedback-card-action', 'Delete');
+      const remove = createElement('button', 'feedback-card-action', l10n.t('Delete'));
       remove.type = 'button';
       remove.disabled = !hasWritableSession() || isPendingDelete;
       remove.setAttribute('data-feedback-delete-action', item.id);
@@ -2994,8 +3046,12 @@ export function createFeedbackReviewController(options: {
         const draft = editDraft;
         const form = createElement('form', 'feedback-card-edit-form');
         form.setAttribute('data-feedback-edit-form', item.id);
-        form.setAttribute('aria-label', `Edit feedback ${item.id}`);
-        const label = createElement('label', 'feedback-composer-label', `Edit feedback ${item.id}`);
+        form.setAttribute('aria-label', l10n.t('Edit feedback {0}', item.id));
+        const label = createElement(
+          'label',
+          'feedback-composer-label',
+          l10n.t('Edit feedback {0}', item.id)
+        );
         const field = createElement('textarea', 'feedback-composer-input') as HTMLTextAreaElement;
         field.id = `feedback-edit-${item.id}`;
         field.value = draft.value;
@@ -3005,11 +3061,11 @@ export function createFeedbackReviewController(options: {
         field.setAttribute('data-feedback-edit-input', item.id);
         label.htmlFor = field.id;
         const editActions = createElement('div', 'feedback-composer-actions');
-        const cancel = createElement('button', 'feedback-secondary-button', 'Cancel');
+        const cancel = createElement('button', 'feedback-secondary-button', l10n.t('Cancel'));
         cancel.type = 'button';
         cancel.disabled = draft.pendingRequestId !== null;
         cancel.setAttribute('data-feedback-edit-cancel', item.id);
-        const save = createElement('button', 'feedback-primary-button', 'Save changes');
+        const save = createElement('button', 'feedback-primary-button', l10n.t('Save changes'));
         save.type = 'submit';
         save.setAttribute('data-feedback-edit-save', item.id);
         const refreshSaveState = (): void => {
@@ -3080,7 +3136,7 @@ export function createFeedbackReviewController(options: {
         continue;
       }
       if (item.kind === 'screenshot') {
-        const replace = createElement('button', 'feedback-card-action', 'Replace capture');
+        const replace = createElement('button', 'feedback-card-action', l10n.t('Replace capture'));
         replace.type = 'button';
         replace.disabled = !hasWritableSession();
         replace.addEventListener('click', () => {
@@ -3172,16 +3228,21 @@ export function createFeedbackReviewController(options: {
     );
     annotationAnchorAlert.setAttribute('data-feedback-anchor-alert', '');
     annotationAnchorAlert.setAttribute('role', 'alert');
-    annotationAnchorAlert.setAttribute('aria-label', 'Feedback target needs attention');
+    annotationAnchorAlert.setAttribute('aria-label', l10n.t('Feedback target needs attention'));
 
-    const itemWord = orderedIds.length === 1 ? 'target' : 'targets';
     const status = createElement('span', 'feedback-anchor-alert-message');
-    status.textContent = `${FEEDBACK_ERROR_CODES.targetDoesNotMap}: Exact rendered ${itemWord} for ${orderedIds.join(', ')} could not be resolved. Safe block-level fallback is shown.`;
+    status.textContent = l10n.t(
+      orderedIds.length === 1
+        ? '{0}: Exact rendered target for {1} could not be resolved. Safe block-level fallback is shown.'
+        : '{0}: Exact rendered targets for {1} could not be resolved. Safe block-level fallback is shown.',
+      FEEDBACK_ERROR_CODES.targetDoesNotMap,
+      orderedIds.join(', ')
+    );
 
-    const retry = createElement('button', 'feedback-secondary-button', 'Retry');
+    const retry = createElement('button', 'feedback-secondary-button', l10n.t('Retry'));
     retry.type = 'button';
     retry.setAttribute('data-feedback-anchor-retry', '');
-    retry.setAttribute('aria-label', 'Retry exact Feedback target mapping');
+    retry.setAttribute('aria-label', l10n.t('Retry exact Feedback target mapping'));
     retry.addEventListener('click', () => {
       const preferredId = orderedIds[0];
       renderMarkers();
@@ -3190,7 +3251,10 @@ export function createFeedbackReviewController(options: {
           .querySelector<HTMLButtonElement>('[data-feedback-anchor-retry]')
           ?.focus({ preventScroll: true });
         announce(
-          `${FEEDBACK_ERROR_CODES.targetDoesNotMap}: Exact Feedback target is still unavailable.`
+          l10n.t(
+            '{0}: Exact Feedback target is still unavailable.',
+            FEEDBACK_ERROR_CODES.targetDoesNotMap
+          )
         );
         return;
       }
@@ -3198,7 +3262,7 @@ export function createFeedbackReviewController(options: {
         markerLayer?.querySelectorAll<HTMLButtonElement>('[data-feedback-marker]') ?? []
       ).find(marker => marker.dataset.feedbackIds?.split(',').includes(preferredId ?? ''));
       restoredMarker?.focus({ preventScroll: true });
-      announce('Exact Feedback target restored.');
+      announce(l10n.t('Exact Feedback target restored.'));
     });
     annotationAnchorAlert.append(status, retry);
     frameLabel?.after(annotationAnchorAlert);
@@ -3242,42 +3306,61 @@ export function createFeedbackReviewController(options: {
     annotationLayoutAlert = createElement('section', 'feedback-invalidated-alert');
     annotationLayoutAlert.setAttribute('data-feedback-layout-alert', '');
     annotationLayoutAlert.setAttribute('role', 'alert');
-    annotationLayoutAlert.setAttribute('aria-label', 'Feedback layout needs attention');
+    annotationLayoutAlert.setAttribute('aria-label', l10n.t('Feedback layout needs attention'));
 
     const staleIds = orderedIssues
       .filter(([, state]) => state === 'stale')
-      .map(([id]) => (id === '__composer__' ? 'the feedback draft' : id));
+      .map(([id]) => (id === '__composer__' ? l10n.t('the feedback draft') : id));
     const unavailableIds = orderedIssues
       .filter(([, state]) => state === 'unavailable')
-      .map(([id]) => (id === '__composer__' ? 'the feedback draft' : id));
+      .map(([id]) => (id === '__composer__' ? l10n.t('the feedback draft') : id));
     const status = createElement('span', 'feedback-layout-alert-message');
     const parts: string[] = [];
     if (staleIds.length > 0) {
       parts.push(
-        `${staleIds.join(', ')} ${staleIds.length === 1 ? 'is' : 'are'} shown at the last measured position`
+        l10n.t(
+          staleIds.length === 1
+            ? '{0} is shown at the last measured position.'
+            : '{0} are shown at the last measured position.',
+          staleIds.join(', ')
+        )
       );
     }
     if (unavailableIds.length > 0) {
       parts.push(
-        `${unavailableIds.join(', ')} ${unavailableIds.length === 1 ? 'is' : 'are'} not currently measurable`
+        l10n.t(
+          unavailableIds.length === 1
+            ? '{0} is not currently measurable.'
+            : '{0} are not currently measurable.',
+          unavailableIds.join(', ')
+        )
       );
     }
-    status.textContent = `${parts.join('. ')}. No approximate positions were used.`;
+    parts.push(l10n.t('No approximate positions were used.'));
+    // The space between sentences belongs to the translation: not every language uses one.
+    status.textContent = parts.reduce((text, sentence) =>
+      l10n.t({
+        message: '{0} {1}',
+        args: [text, sentence],
+        comment:
+          'Two sentences shown one after the other. Remove the space if your language does not put one between sentences.',
+      })
+    );
 
     const actions = createElement('div', 'feedback-draft-actions');
     for (const [id, state] of orderedIssues) {
       if (state !== 'unavailable' || id === '__composer__') continue;
-      const open = createElement('button', 'feedback-secondary-button', `Open ${id}`);
+      const open = createElement('button', 'feedback-secondary-button', l10n.t('Open {0}', id));
       open.type = 'button';
       open.setAttribute('data-feedback-layout-open', id);
-      open.setAttribute('aria-label', `Open feedback ${id} without a positioned marker`);
+      open.setAttribute('aria-label', l10n.t('Open feedback {0} without a positioned marker', id));
       open.addEventListener('click', () => activateFeedbackItem(id));
       actions.append(open);
     }
-    const retry = createElement('button', 'feedback-secondary-button', 'Retry');
+    const retry = createElement('button', 'feedback-secondary-button', l10n.t('Retry'));
     retry.type = 'button';
     retry.setAttribute('data-feedback-layout-retry', '');
-    retry.setAttribute('aria-label', 'Retry Feedback annotation layout');
+    retry.setAttribute('aria-label', l10n.t('Retry Feedback annotation layout'));
     retry.addEventListener('click', () => {
       const preferredFocusId = orderedIssues.find(([id]) => id !== '__composer__')?.[0];
       renderMarkers();
@@ -3285,7 +3368,7 @@ export function createFeedbackReviewController(options: {
         annotationLayoutAlert
           .querySelector<HTMLButtonElement>('[data-feedback-layout-retry]')
           ?.focus({ preventScroll: true });
-        announce('Feedback positions are still unavailable.');
+        announce(l10n.t('Feedback positions are still unavailable.'));
         return;
       }
       const restoredMarker = Array.from(
@@ -3294,7 +3377,7 @@ export function createFeedbackReviewController(options: {
       (
         restoredMarker ?? markerLayer?.querySelector<HTMLButtonElement>('[data-feedback-marker]')
       )?.focus({ preventScroll: true });
-      announce('Feedback annotation positions restored.');
+      announce(l10n.t('Feedback annotation positions restored.'));
     });
     actions.append(retry);
     annotationLayoutAlert.append(status, actions);
@@ -3744,7 +3827,9 @@ export function createFeedbackReviewController(options: {
       applyMarkerPositions(layout);
     } catch (error) {
       announce(
-        error instanceof Error ? error.message : 'Feedback annotations could not be laid out.'
+        error instanceof Error
+          ? error.message
+          : l10n.t('Feedback annotations could not be laid out.')
       );
     }
   };
@@ -3773,16 +3858,22 @@ export function createFeedbackReviewController(options: {
     const itemSummary = (item: FeedbackItemSummary): string => {
       const focus =
         item.kind === 'text'
-          ? item.focus?.trim().replace(/\s+/g, ' ') || 'text feedback'
-          : 'screenshot';
-      return `${item.id}, lines ${item.startLine}-${item.endLine}, ${focus.slice(0, 80)}`;
+          ? item.focus?.trim().replace(/\s+/g, ' ') || l10n.t('text feedback')
+          : l10n.t('screenshot');
+      return l10n.t(
+        '{0}, lines {1}-{2}, {3}',
+        item.id,
+        item.startLine,
+        item.endLine,
+        focus.slice(0, 80)
+      );
     };
     if (items.length > 1) {
-      return `${items.length} comments: ${items.map(itemSummary).join('; ')}`;
+      return l10n.t('{0} comments: {1}', items.length, items.map(itemSummary).join('; '));
     }
     const item = items[0];
-    if (!item) return `Comment ${ids[0]}`;
-    return `Comment ${itemSummary(item)}`;
+    if (!item) return l10n.t('Comment {0}', ids[0]);
+    return l10n.t('Comment {0}', itemSummary(item));
   };
 
   const renderMarkers = (): void => {
@@ -3917,14 +4008,18 @@ export function createFeedbackReviewController(options: {
   };
 
   const createReviewChrome = (): void => {
-    frameLabel = createElement('div', 'feedback-frame-label', 'Feedback review · snapshot saved');
+    frameLabel = createElement(
+      'div',
+      'feedback-frame-label',
+      l10n.t('Feedback review · snapshot saved')
+    );
     frameLabel.setAttribute('data-feedback-frame-label', '');
     frameLabel.setAttribute('role', 'status');
 
     rail = createElement('aside', 'feedback-comment-rail feedback-annotation-layer');
     rail.id = FEEDBACK_COMMENTS_RAIL_ID;
     rail.setAttribute('data-feedback-annotation-layer', '');
-    rail.setAttribute('aria-label', 'Feedback comments');
+    rail.setAttribute('aria-label', l10n.t('Feedback comments'));
     rail.setAttribute('aria-hidden', 'false');
     rail.setAttribute('data-feedback-comments-state', commentsState);
     markerLayer = createElement('div', 'feedback-marker-layer');
@@ -3938,7 +4033,7 @@ export function createFeedbackReviewController(options: {
     panel = createElement('section', 'feedback-comments-panel feedback-card-layer');
     panel.id = FEEDBACK_COMMENTS_PANEL_ID;
     panel.setAttribute('data-feedback-card-layer', '');
-    panel.setAttribute('aria-label', 'Feedback details');
+    panel.setAttribute('aria-label', l10n.t('Feedback details'));
     rail.append(targetBracketLayer, connectorLayer, markerLayer, panel);
 
     annotationSpacer = createElement('div', 'feedback-annotation-spacer');
@@ -3996,10 +4091,12 @@ export function createFeedbackReviewController(options: {
     pendingButtonTarget = target;
     pendingButton = createElement('button', 'feedback-selection-action') as HTMLButtonElement;
     pendingButton.type = 'button';
-    pendingButton.title = 'Add feedback';
+    pendingButton.title = l10n.t('Add feedback');
     pendingButton.setAttribute(
       'aria-label',
-      target.cellTarget ? 'Add feedback to selected table cells' : 'Add feedback to selected text'
+      target.cellTarget
+        ? l10n.t('Add feedback to selected table cells')
+        : l10n.t('Add feedback to selected text')
     );
     pendingButton.setAttribute('data-feedback-selection-action', '');
     const icon = createElement('span', 'codicon codicon-comment-discussion-sparkle');
@@ -4063,25 +4160,30 @@ export function createFeedbackReviewController(options: {
     dialog.setAttribute('aria-modal', 'true');
     dialog.setAttribute('data-md4h-modal', '');
     dialog.setAttribute('data-feedback-text-block-selector', '');
-    const title = createElement('h2', '', 'Choose blocks for feedback');
+    const title = createElement('h2', '', l10n.t('Choose blocks for feedback'));
     title.id = 'feedback-text-block-selector-title';
     dialog.setAttribute('aria-labelledby', title.id);
     const start = document.createElement('select');
     const end = document.createElement('select');
-    const startLabel = createElement('label', '', 'First block');
-    const endLabel = createElement('label', '', 'Last block');
+    const startLabel = createElement('label', '', l10n.t('First block'));
+    const endLabel = createElement('label', '', l10n.t('Last block'));
     startLabel.append(start);
     endLabel.append(end);
     for (const anchor of anchors) {
-      const label = `Block ${anchor.ordinal + 1}, lines ${anchor.startLine}-${anchor.endLine}`;
+      const label = l10n.t(
+        'Block {0}, lines {1}-{2}',
+        anchor.ordinal + 1,
+        anchor.startLine,
+        anchor.endLine
+      );
       start.add(new Option(label, String(anchor.ordinal)));
       end.add(new Option(label, String(anchor.ordinal)));
     }
     end.selectedIndex = end.options.length - 1;
     const actions = createElement('div', 'feedback-composer-actions');
-    const cancel = createElement('button', 'feedback-secondary-button', 'Cancel');
+    const cancel = createElement('button', 'feedback-secondary-button', l10n.t('Cancel'));
     cancel.type = 'button';
-    const submit = createElement('button', 'feedback-primary-button', 'Add feedback');
+    const submit = createElement('button', 'feedback-primary-button', l10n.t('Add feedback'));
     submit.type = 'submit';
     actions.append(cancel, submit);
     dialog.append(title, startLabel, endLabel, actions);
@@ -4176,7 +4278,7 @@ export function createFeedbackReviewController(options: {
       : window.getComputedStyle(candidate).display !== 'none' &&
         window.getComputedStyle(candidate).visibility !== 'hidden');
 
-  const focusModalSurfaceBefore = (action: string): boolean => {
+  const focusModalSurfaceBefore = (action: 'start' | 'navigate'): boolean => {
     const activeModal = Array.from(
       document.querySelectorAll<HTMLElement>(
         '[data-md4h-modal], [role="dialog"][aria-modal="true"], .math-editor-overlay, .mermaid-editor-overlay, .image-insert-dialog-overlay, .rename-dialog-overlay, .huge-image-overlay'
@@ -4195,7 +4297,12 @@ export function createFeedbackReviewController(options: {
       const focusedControl = focusable.some(candidate => focusElementWithoutScroll(candidate));
       if (!focusedControl) focusElementWithoutScroll(activeModal);
     }
-    showSurfaceAttention(activeModal, `Complete or close this dialog before ${action}.`);
+    showSurfaceAttention(
+      activeModal,
+      action === 'start'
+        ? l10n.t('Complete or close this dialog before starting Feedback.')
+        : l10n.t('Complete or close this dialog before navigating comments.')
+    );
     // Link and Table dialogs are hidden and reused, not removed. Clear the notice
     // when this dialog closes so its next, unrelated open does not repeat it.
     draftNoticeHostObserver = new MutationObserver(() => {
@@ -4234,7 +4341,7 @@ export function createFeedbackReviewController(options: {
         editor.view.focus();
       }
       if (session || startRequestId) return;
-      if (focusModalSurfaceBefore('starting Feedback')) return;
+      if (focusModalSurfaceBefore('start')) return;
       clearDraftSurfaceAttention();
       rememberTransitionFocus();
       setDraftBannerBusy(true);
@@ -4320,7 +4427,7 @@ export function createFeedbackReviewController(options: {
             preventScroll: true,
           });
         }
-        announce('Feedback review started. Snapshot saved.');
+        announce(l10n.t('Feedback review started. Snapshot saved.'));
       });
       if (prepared.disposition === 'failed') throw prepared.error;
       if (prepared.disposition !== 'applied') {
@@ -4595,7 +4702,10 @@ export function createFeedbackReviewController(options: {
       alertElement = createElement(
         'div',
         'feedback-invalidated-alert',
-        `The source changed outside this feedback snapshot (${code}). The draft is preserved. Reveal or discard it, then start a new session.`
+        l10n.t(
+          'The source changed outside this feedback snapshot ({0}). The draft is preserved. Reveal or discard it, then start a new session.',
+          code
+        )
       );
       alertElement.setAttribute('role', 'alert');
       alertElement.tabIndex = -1;
@@ -4604,8 +4714,12 @@ export function createFeedbackReviewController(options: {
       syncCommentsUi();
       updateCompletionCheckpoint(
         pendingFinishRequestId === null && pendingClose === null
-          ? 'The source changed outside this snapshot. Resume to reveal or discard the preserved draft.'
-          : 'The source changed while finishing. Waiting for the locked operation to stop safely.'
+          ? l10n.t(
+              'The source changed outside this snapshot. Resume to reveal or discard the preserved draft.'
+            )
+          : l10n.t(
+              'The source changed while finishing. Waiting for the locked operation to stop safely.'
+            )
       );
       if (!restoreLocalFocus) return;
       if (completionDialog) {
@@ -4683,9 +4797,16 @@ export function createFeedbackReviewController(options: {
           ?.focus({ preventScroll: true });
       }
       if (draftWasDiscarded) {
-        announce('The unsaved edit was discarded because that comment is no longer present.');
+        announce(
+          l10n.t('The unsaved edit was discarded because that comment is no longer present.')
+        );
       } else {
-        announce(`${items.length} feedback ${items.length === 1 ? 'comment' : 'comments'} saved.`);
+        announce(
+          l10n.t(
+            items.length === 1 ? '{0} feedback comment saved.' : '{0} feedback comments saved.',
+            items.length
+          )
+        );
       }
     },
 
@@ -4701,7 +4822,7 @@ export function createFeedbackReviewController(options: {
         composer.querySelector<HTMLTextAreaElement>('[data-feedback-input]')?.focus({
           preventScroll: true,
         });
-        announce('Add or cancel the current feedback before choosing another target.');
+        announce(l10n.t('Add or cancel the current feedback before choosing another target.'));
         return;
       }
       const durableReturnTarget = invokingElement?.matches(
@@ -4734,10 +4855,10 @@ export function createFeedbackReviewController(options: {
       composer = composerElement;
       syncAnnotationDecorations();
       setCommentsState('expanded');
-      composerElement.setAttribute('aria-label', 'Add feedback');
+      composerElement.setAttribute('aria-label', l10n.t('Add feedback'));
 
       const headingRow = createElement('div', 'feedback-composer-heading');
-      const heading = createElement('h2', 'feedback-composer-title', 'What should change?');
+      const heading = createElement('h2', 'feedback-composer-title', l10n.t('What should change?'));
       const sizeToggle = createElement(
         'button',
         'feedback-secondary-button feedback-composer-size-toggle'
@@ -4748,8 +4869,10 @@ export function createFeedbackReviewController(options: {
       const syncComposerSize = (): void => {
         const wide = composerSize === 'wide';
         composerElement.dataset.feedbackComposerSize = composerSize;
-        sizeToggle.textContent = wide ? 'Compact' : 'Expand';
-        sizeToggle.title = wide ? 'Use compact feedback composer' : 'Expand feedback composer';
+        sizeToggle.textContent = wide ? l10n.t('Compact') : l10n.t('Expand');
+        sizeToggle.title = wide
+          ? l10n.t('Use compact feedback composer')
+          : l10n.t('Expand feedback composer');
         sizeToggle.setAttribute('aria-label', sizeToggle.title);
       };
       sizeToggle.addEventListener('click', () => {
@@ -4777,7 +4900,7 @@ export function createFeedbackReviewController(options: {
         )
       );
       lines.setAttribute('data-feedback-lines', '');
-      const label = createElement('label', 'feedback-composer-label', 'Feedback');
+      const label = createElement('label', 'feedback-composer-label', l10n.t('Feedback'));
       field.required = true;
       field.rows = 5;
       field.setAttribute('data-feedback-input', '');
@@ -4788,18 +4911,18 @@ export function createFeedbackReviewController(options: {
       resizeComposerInputForViewport = resizeComposerInput;
       label.append(field);
       const actions = createElement('div', 'feedback-composer-actions');
-      const cancel = createElement('button', 'feedback-secondary-button', 'Cancel');
+      const cancel = createElement('button', 'feedback-secondary-button', l10n.t('Cancel'));
       cancel.type = 'button';
-      const submit = createElement('button', 'feedback-primary-button', 'Add feedback');
+      const submit = createElement('button', 'feedback-primary-button', l10n.t('Add feedback'));
       submit.type = 'submit';
       submit.disabled = true;
       submit.setAttribute('data-feedback-submit', '');
       const refreshComposerActions = (): void => {
         const dirty = field.value.trim().length > 0;
-        cancel.textContent = dirty ? 'Discard' : 'Cancel';
+        cancel.textContent = dirty ? l10n.t('Discard') : l10n.t('Cancel');
         cancel.setAttribute(
           'aria-label',
-          dirty ? 'Discard unfinished feedback' : 'Cancel feedback'
+          dirty ? l10n.t('Discard unfinished feedback') : l10n.t('Cancel feedback')
         );
         submit.disabled = !dirty || pendingRequestId !== null || !hasWritableSession();
       };
@@ -4814,8 +4937,9 @@ export function createFeedbackReviewController(options: {
           return;
         }
         const confirmation = createFeedbackDiscardDialog({
-          description:
-            'Your unfinished comment will be lost. Saved comments and the Feedback session will remain.',
+          description: l10n.t(
+            'Your unfinished comment will be lost. Saved comments and the Feedback session will remain.'
+          ),
           returnFocus: field,
           suspendedSurface: composerElement,
         });
@@ -4872,7 +4996,7 @@ export function createFeedbackReviewController(options: {
         pendingRequestId = requestId;
         field.readOnly = true;
         cancel.disabled = true;
-        submit.textContent = 'Saving…';
+        submit.textContent = l10n.t('Saving…');
         submit.disabled = true;
         pendingMutations.set(requestId, {
           kind: 'text-add',
@@ -4883,7 +5007,7 @@ export function createFeedbackReviewController(options: {
             pendingRequestId = null;
             field.readOnly = false;
             cancel.disabled = false;
-            submit.textContent = 'Add feedback';
+            submit.textContent = l10n.t('Add feedback');
             refreshComposerActions();
           },
         });
@@ -4916,13 +5040,17 @@ export function createFeedbackReviewController(options: {
       actions.append(cancel, submit);
       const scopeContainer = createElement('div', 'feedback-scope-controls');
       if (blockTargetResolver) {
-        const scopeButton = createElement('button', 'feedback-secondary-button', 'Change scope');
+        const scopeButton = createElement(
+          'button',
+          'feedback-secondary-button',
+          l10n.t('Change scope')
+        );
         scopeButton.type = 'button';
         scopeButton.setAttribute('aria-expanded', 'false');
         const scopeList = createElement('div', 'feedback-scope-list');
         scopeList.hidden = true;
         scopeList.setAttribute('role', 'group');
-        scopeList.setAttribute('aria-label', 'Choose feedback scope');
+        scopeList.setAttribute('aria-label', l10n.t('Choose feedback scope'));
         const firstOrdinal = target.startOrdinal;
         const block = blockTargetResolver.resolve(firstOrdinal);
         const position = target.scopePosition ?? editor.state.selection.from;
@@ -4970,14 +5098,18 @@ export function createFeedbackReviewController(options: {
             const resolved = materializeScope(candidate);
             if (!resolved) {
               announce(
-                'This scope cannot be represented as complete text. Choose its whole container or use area capture.'
+                l10n.t(
+                  'This scope cannot be represented as complete text. Choose its whole container or use area capture.'
+                )
               );
               return;
             }
             const bounded = constrainCellTargetToSessionBudget(resolved);
             if (resolved.cellTarget && !bounded.cellTarget) {
               announce(
-                'This round has reached its exact-cell limit. Choose the whole table or start a new round.'
+                l10n.t(
+                  'This round has reached its exact-cell limit. Choose the whole table or start a new round.'
+                )
               );
               return;
             }
@@ -5030,7 +5162,9 @@ export function createFeedbackReviewController(options: {
                 createElement(
                   'p',
                   'feedback-muted',
-                  'Cell, row and column scopes are unavailable here. Choose the whole table or select text inside a cell.'
+                  l10n.t(
+                    'Cell, row and column scopes are unavailable here. Choose the whole table or select text inside a cell.'
+                  )
                 )
               );
           }
@@ -5096,7 +5230,7 @@ export function createFeedbackReviewController(options: {
             : structuralTarget(scope, position)));
       const target = candidate && materializeScope({ ...candidate, scopePosition: position });
       if (!target) {
-        announce('Choose a mapped text block or use area capture for this content.');
+        announce(l10n.t('Choose a mapped text block or use area capture for this content.'));
         return false;
       }
       controller.openTextComposer(target);
@@ -5108,7 +5242,7 @@ export function createFeedbackReviewController(options: {
       if (!hasWritableSession() || !session) return false;
       if (draftSurfaceGate.focusActive()) return true;
       if (nativeTextSelectionIsOutsideEditor(editorDom)) {
-        announce('Select text in the Markdown document to add feedback.');
+        announce(l10n.t('Select text in the Markdown document to add feedback.'));
         return false;
       }
       const selectedTarget = getFeedbackSelectionTarget(editor, session.anchors ?? []);
@@ -5126,7 +5260,7 @@ export function createFeedbackReviewController(options: {
         composer.querySelector<HTMLTextAreaElement>('[data-feedback-input]')?.focus({
           preventScroll: true,
         });
-        announce('Add or cancel this feedback before hiding comments.');
+        announce(l10n.t('Add or cancel this feedback before hiding comments.'));
         return;
       }
       if (!wantsVisible) {
@@ -5155,7 +5289,7 @@ export function createFeedbackReviewController(options: {
     navigateFeedback(direction) {
       if (!session || session.items.length === 0) return;
       if (draftSurfaceGate.focusActive()) return;
-      if (focusModalSurfaceBefore('navigating comments')) return;
+      if (focusModalSurfaceBefore('navigate')) return;
       const ordered = [...session.items].sort(
         (left, right) =>
           left.startOrdinal - right.startOrdinal || compareFeedbackIds(left.id, right.id)
@@ -5197,7 +5331,7 @@ export function createFeedbackReviewController(options: {
         blockSelector.querySelector<HTMLElement>('select, button')?.focus({
           preventScroll: true,
         });
-        announce('Choose blocks or cancel before finishing.');
+        announce(l10n.t('Choose blocks or cancel before finishing.'));
         return;
       }
       if (composer) {
@@ -5205,7 +5339,7 @@ export function createFeedbackReviewController(options: {
         composer.querySelector<HTMLTextAreaElement>('[data-feedback-input]')?.focus({
           preventScroll: true,
         });
-        announce('Add or cancel the current feedback before finishing.');
+        announce(l10n.t('Add or cancel the current feedback before finishing.'));
         return;
       }
       openCompletionCheckpoint();
@@ -5256,7 +5390,9 @@ export function createFeedbackReviewController(options: {
       else hideBlockAction();
       if (session) syncCommentsUi();
       if (nextState === 'armed') {
-        announce('Capture area ready. Drag over the visible document. Press Escape to cancel.');
+        announce(
+          l10n.t('Capture area ready. Drag over the visible document. Press Escape to cancel.')
+        );
       }
     },
 
@@ -5386,7 +5522,7 @@ export function createFeedbackReviewController(options: {
       if (!applied) {
         renderSyncRetryAlert(
           'transition',
-          'The latest Markdown source could not be restored. Feedback remains read-only.',
+          l10n.t('The latest Markdown source could not be restored. Feedback remains read-only.'),
           () => {
             if (!pendingTransitionRecovery) return;
             post({
@@ -5460,7 +5596,7 @@ export function createFeedbackReviewController(options: {
         registerReadOnlyPlugin();
         renderSyncRetryAlert(
           'close',
-          'The latest Markdown source could not be restored. Feedback remains read-only.',
+          l10n.t('The latest Markdown source could not be restored. Feedback remains read-only.'),
           () => {
             if (!pendingClose) return;
             post({
@@ -5687,7 +5823,7 @@ export function createFeedbackReviewController(options: {
                 editDraft = null;
               }
               requestedEditFocusId = pending.id;
-              announce(`Feedback ${pending.id} updated.`);
+              announce(l10n.t('Feedback {0} updated.', pending.id));
             } else if (
               pending?.kind === 'delete' &&
               !message.items.some(item => item.id === pending.item.id)
@@ -5739,7 +5875,7 @@ export function createFeedbackReviewController(options: {
             '[data-feedback-completion-status]'
           );
           if (completionStatus) {
-            completionStatus.textContent = 'Feedback locked. Restoring the latest source…';
+            completionStatus.textContent = l10n.t('Feedback locked. Restoring the latest source…');
           }
           restoreEditorFocusAfterClose = Boolean(
             document.activeElement instanceof HTMLElement &&
@@ -5756,7 +5892,9 @@ export function createFeedbackReviewController(options: {
           };
           renderCards();
           syncCommentsUi();
-          announce('Feedback bundle sealed. Restoring the latest source before editing resumes.');
+          announce(
+            l10n.t('Feedback bundle sealed. Restoring the latest source before editing resumes.')
+          );
           post({
             type: 'feedback.close.ready',
             requestId: message.requestId,
@@ -5809,7 +5947,9 @@ export function createFeedbackReviewController(options: {
           };
           renderCards();
           syncCommentsUi();
-          announce('Feedback draft discarded. Restoring the latest source before editing resumes.');
+          announce(
+            l10n.t('Feedback draft discarded. Restoring the latest source before editing resumes.')
+          );
           post({
             type: 'feedback.close.ready',
             requestId: message.requestId,
@@ -5846,10 +5986,10 @@ export function createFeedbackReviewController(options: {
         case 'feedback.draft.discarded':
           renderDraftBanner(availableDrafts.filter(draft => draft.round !== message.round));
           if (message.requestId === startRequestId) setDraftBannerBusy(true);
-          announce('Feedback draft discarded.');
+          announce(l10n.t('Feedback draft discarded.'));
           break;
         case 'feedback.diagnosticsCopied':
-          announce('Feedback diagnostics copied.');
+          announce(l10n.t('Feedback diagnostics copied.'));
           break;
         case 'feedback.error':
           if (message.requestId !== undefined && message.requestId === pendingFinishRequestId) {
@@ -5876,8 +6016,9 @@ export function createFeedbackReviewController(options: {
             );
             previewDisclosure?.setAttribute('data-feedback-preview-state', 'error');
             if (previewElement) {
-              previewElement.textContent =
-                'Could not load the preview. Collapse and reopen to try again.';
+              previewElement.textContent = l10n.t(
+                'Could not load the preview. Collapse and reopen to try again.'
+              );
             }
           }
           if (

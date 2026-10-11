@@ -849,11 +849,15 @@ function getDocumentBasePath(document: vscode.TextDocument): string {
  */
 async function showExportWarning(format: string): Promise<boolean> {
   const formatName = format === 'pdf' ? 'PDF' : 'Word';
-  const message = `Export to ${formatName} works best with simple markdown files.\n\nKnown limitations:\n• Images (especially remote URLs)\n• Mermaid diagrams\n• Complex markdown structures\n\nSome content may not render correctly in the exported document.`;
+  const message = vscode.l10n.t(
+    'Export to {0} works best with simple markdown files.\n\nKnown limitations:\n• Images (especially remote URLs)\n• Mermaid diagrams\n• Complex markdown structures\n\nSome content may not render correctly in the exported document.',
+    formatName
+  );
+  const understand = vscode.l10n.t('I Understand');
 
-  const action = await vscode.window.showWarningMessage(message, { modal: true }, 'I Understand');
+  const action = await vscode.window.showWarningMessage(message, { modal: true }, understand);
 
-  return action === 'I Understand';
+  return action === understand;
 }
 
 /**
@@ -1026,7 +1030,9 @@ export async function exportDocument(
   const defaultFilename = title.replace(/[<>:"/\\|?*]/g, '-') || 'document';
   const extension = format === 'pdf' ? 'pdf' : 'docx';
   const filters: Record<string, string[]> = {};
-  filters[format === 'pdf' ? 'PDF Document' : 'Word Document'] = [extension];
+  filters[format === 'pdf' ? vscode.l10n.t('PDF Document') : vscode.l10n.t('Word Document')] = [
+    extension,
+  ];
 
   const docBasePath = getDocumentBasePath(document);
   const saveUri = await vscode.window.showSaveDialog({
@@ -1044,7 +1050,7 @@ export async function exportDocument(
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Exporting to ${format.toUpperCase()}...`,
+      title: vscode.l10n.t('Exporting to {0}...', format.toUpperCase()),
       cancellable: true,
     },
     async (progress, token) => {
@@ -1075,7 +1081,7 @@ export async function exportDocument(
         // Only show success message if export actually completed
         if (exportSucceeded) {
           vscode.window.showInformationMessage(
-            `Document exported successfully to ${path.basename(uri.fsPath)}`
+            vscode.l10n.t('Document exported successfully to {0}', path.basename(uri.fsPath))
           );
 
           // Auto-open PDF in default viewer (only for PDF format)
@@ -1093,7 +1099,7 @@ export async function exportDocument(
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        vscode.window.showErrorMessage(`Export failed: ${errorMessage}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('Export failed: {0}', errorMessage));
         console.error('[MD4H] Export error:', error);
       }
     }
@@ -1128,7 +1134,7 @@ async function ensureChromePath(
   const configuredRaw = config.get<string>('chromePath');
   if (configuredRaw) {
     const configuredPath = resolveChromeExecutable(configuredRaw);
-    report('Validating configured Chrome path…', 20);
+    report(vscode.l10n.t('Validating configured Chrome path…'), 20);
     const validation = await validateChromePath(configuredPath);
     if (validation.valid) {
       return configuredPath;
@@ -1136,7 +1142,7 @@ async function ensureChromePath(
   }
 
   // 2) Auto-detect common paths
-  report('Detecting Chrome on this system…', 20);
+  report(vscode.l10n.t('Detecting Chrome on this system…'), 20);
   const detected = await findChromeExecutable();
   if (detected.path) {
     const detectedPath = resolveChromeExecutable(detected.path);
@@ -1180,7 +1186,10 @@ export async function validateChromePath(chromePath: string): Promise<ChromeVali
 
   // Check if file exists
   if (!fs.existsSync(executablePath)) {
-    return { valid: false, error: 'Chrome executable not found at the specified path' };
+    return {
+      valid: false,
+      error: vscode.l10n.t('Chrome executable not found at the specified path'),
+    };
   }
 
   // Try running Chrome with --version to verify it's actually Chrome/Chromium
@@ -1205,7 +1214,7 @@ export async function validateChromePath(chromePath: string): Promise<ChromeVali
   } catch {
     return {
       valid: false,
-      error: 'The specified file is not a valid Chrome/Chromium executable',
+      error: vscode.l10n.t('The specified file is not a valid Chrome/Chromium executable'),
     };
   }
 }
@@ -1220,36 +1229,45 @@ export async function validateChromePath(chromePath: string): Promise<ChromeVali
 export async function promptForChromePath(detectedPath: string | null): Promise<string | null> {
   if (detectedPath) {
     // Chrome was detected - offer to use it or choose different
+    const usePath = vscode.l10n.t('Use This Path');
+    const chooseDifferentPath = vscode.l10n.t('Choose Different Path');
     const choice = await vscode.window.showInformationMessage(
-      `Chrome detected at:\n${detectedPath}\n\nWould you like to use this for PDF export?`,
+      vscode.l10n.t(
+        'Chrome detected at:\n{0}\n\nWould you like to use this for PDF export?',
+        detectedPath
+      ),
       { modal: true },
-      'Use This Path',
-      'Choose Different Path',
-      'Cancel'
+      usePath,
+      chooseDifferentPath,
+      vscode.l10n.t('Cancel')
     );
 
-    if (choice === 'Use This Path') {
+    if (choice === usePath) {
       return detectedPath;
-    } else if (choice === 'Choose Different Path') {
+    } else if (choice === chooseDifferentPath) {
       return await showChromeFilePicker();
     } else {
       return null; // Cancelled
     }
   } else {
     // Chrome not detected - offer to choose path or download
+    const downloadChrome = vscode.l10n.t('Download Chrome');
+    const chooseChromePath = vscode.l10n.t('Choose Chrome Path');
     const choice = await vscode.window.showInformationMessage(
-      'Chrome/Chromium is required for PDF export but was not found on your system.\n\nYou can download Chrome or select an existing installation.',
+      vscode.l10n.t(
+        'Chrome/Chromium is required for PDF export but was not found on your system.\n\nYou can download Chrome or select an existing installation.'
+      ),
       { modal: true },
-      'Download Chrome',
-      'Choose Chrome Path',
-      'Cancel'
+      downloadChrome,
+      chooseChromePath,
+      vscode.l10n.t('Cancel')
     );
 
-    if (choice === 'Download Chrome') {
+    if (choice === downloadChrome) {
       // Open Chrome download page
       await vscode.env.openExternal(vscode.Uri.parse('https://www.google.com/chrome/'));
       return null; // User needs to install and try again
-    } else if (choice === 'Choose Chrome Path') {
+    } else if (choice === chooseChromePath) {
       return await showChromeFilePicker();
     } else {
       return null; // Cancelled
@@ -1277,7 +1295,7 @@ async function showChromeFilePicker(): Promise<string | null> {
     canSelectFolders: platform === 'darwin', // allow picking .app bundles
     canSelectMany: false,
     filters,
-    title: 'Select Chrome/Chromium Executable',
+    title: vscode.l10n.t('Select Chrome/Chromium Executable'),
   });
 
   if (result && result.length > 0) {
@@ -1297,39 +1315,47 @@ async function promptForChromePathInlineResolver(
 ): Promise<string | null> {
   let lastError: string | undefined;
   let lastValue: string | undefined;
+  const browse = vscode.l10n.t('Browse…');
+  const enterPath = vscode.l10n.t('Enter Path');
+  const downloadChrome = vscode.l10n.t('Download Chrome');
+  const cancel = vscode.l10n.t('Cancel');
 
   while (!token.isCancellationRequested) {
     const choice = await vscode.window.showInformationMessage(
       lastError
-        ? `Chrome is required for PDF export.\nLast check failed: ${lastError}`
-        : 'Chrome is required for PDF export. Provide a path to Chrome/Chromium.',
+        ? vscode.l10n.t('Chrome is required for PDF export.\nLast check failed: {0}', lastError)
+        : vscode.l10n.t('Chrome is required for PDF export. Provide a path to Chrome/Chromium.'),
       { modal: true },
-      'Browse…',
-      'Enter Path',
-      'Download Chrome',
-      'Cancel'
+      browse,
+      enterPath,
+      downloadChrome,
+      cancel
     );
 
-    if (!choice || choice === 'Cancel') {
+    if (!choice || choice === cancel) {
       return null;
     }
 
-    if (choice === 'Download Chrome') {
+    if (choice === downloadChrome) {
       await vscode.env.openExternal(vscode.Uri.parse('https://www.google.com/chrome/'));
       continue;
     }
 
     let candidate: string | null = null;
 
-    if (choice === 'Browse…') {
+    if (choice === browse) {
       const picked = await showChromeFilePicker();
       candidate = picked ?? null;
-    } else if (choice === 'Enter Path') {
+    } else if (choice === enterPath) {
       const input = await vscode.window.showInputBox({
-        title: 'Enter Chrome/Chromium executable path',
+        title: vscode.l10n.t('Enter Chrome/Chromium executable path'),
         value: lastValue,
-        prompt:
-          'Examples:\n- /Applications/Google Chrome.app/Contents/MacOS/Google Chrome (macOS)\n- C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe (Windows)\n- /usr/bin/google-chrome (Linux)',
+        prompt: vscode.l10n.t(
+          'Examples:\n- {0} (macOS)\n- {1} (Windows)\n- {2} (Linux)',
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+          '/usr/bin/google-chrome'
+        ),
         ignoreFocusOut: true,
       });
       candidate = input ?? null;
@@ -1337,7 +1363,7 @@ async function promptForChromePathInlineResolver(
     }
 
     if (!candidate) {
-      lastError = 'No path selected';
+      lastError = vscode.l10n.t('No path selected');
       continue;
     }
 
@@ -1345,7 +1371,7 @@ async function promptForChromePathInlineResolver(
     if (token.isCancellationRequested) {
       return null;
     }
-    progress.report({ message: 'Validating Chrome path…' });
+    progress.report({ message: vscode.l10n.t('Validating Chrome path…') });
     const validation = await validateChromePath(candidate);
     if (validation.valid) {
       const resolved = resolveChromeExecutable(candidate);
@@ -1354,9 +1380,12 @@ async function promptForChromePathInlineResolver(
       return resolved;
     }
 
-    lastError = validation.error || 'Invalid Chrome path';
+    lastError = validation.error || vscode.l10n.t('Invalid Chrome path');
     await vscode.window.showErrorMessage(
-      `Chrome not ready: ${lastError}. Please choose a valid Chrome/Chromium executable.`
+      vscode.l10n.t(
+        'Chrome not ready: {0}. Please choose a valid Chrome/Chromium executable.',
+        lastError
+      )
     );
   }
 
@@ -1389,7 +1418,7 @@ async function exportToPDF(
   document: vscode.TextDocument,
   token: vscode.CancellationToken
 ): Promise<boolean> {
-  progress.report({ message: 'Preparing PDF export…', increment: 20 });
+  progress.report({ message: vscode.l10n.t('Preparing PDF export…'), increment: 20 });
 
   const chromePath = await ensureChromePath(progress, token);
   if (!chromePath) {
@@ -1416,11 +1445,11 @@ async function exportToPDF(
   try {
     await fs.promises.writeFile(tempHtmlPath, htmlWithBase, 'utf8');
   } catch (error) {
-    throw new Error(`Failed to write temporary HTML for export: ${error}`);
+    throw new Error(vscode.l10n.t('Failed to write temporary HTML for export: {0}', String(error)));
   }
 
   try {
-    progress.report({ message: 'Launching Chrome...', increment: 20 });
+    progress.report({ message: vscode.l10n.t('Launching Chrome...'), increment: 20 });
 
     // SECURITY: `--allow-file-access-from-files` was REMOVED here. Chromium
     // documents that flag as "intended for testing only — do not use it on
@@ -1450,14 +1479,16 @@ async function exportToPDF(
       pathToFileURL(tempHtmlPath).href,
     ];
 
-    progress.report({ message: 'Rendering PDF...', increment: 30 });
+    progress.report({ message: vscode.l10n.t('Rendering PDF...'), increment: 30 });
     await runChrome(chromePath, chromeArgs);
     progress.report({ increment: 20 });
     return true; // Export succeeded
   } catch (error) {
     // Surface a user-friendly error
     const errMessage =
-      error instanceof Error ? error.message : 'Unknown error while exporting to PDF';
+      error instanceof Error
+        ? error.message
+        : vscode.l10n.t('Unknown error while exporting to PDF');
     throw new Error(errMessage);
   } finally {
     // Clean up temp files
@@ -1492,7 +1523,12 @@ async function runChrome(executablePath: string, args: string[]): Promise<void> 
 
     chromeProcess.once('error', error => {
       reject(
-        new Error(`Failed to launch Chrome: ${error instanceof Error ? error.message : error}`)
+        new Error(
+          vscode.l10n.t(
+            'Failed to launch Chrome: {0}',
+            error instanceof Error ? error.message : String(error)
+          )
+        )
       );
     });
 
@@ -1502,7 +1538,11 @@ async function runChrome(executablePath: string, args: string[]): Promise<void> 
       } else {
         reject(
           new Error(
-            `Chrome exited with code ${code}. Install or point to a working Chrome/Chromium via "markdownForHumans.chromePath".`
+            vscode.l10n.t(
+              'Chrome exited with code {0}. Install or point to a working Chrome/Chromium via "{1}".',
+              String(code),
+              'markdownForHumans.chromePath'
+            )
           )
         );
       }
@@ -1607,14 +1647,14 @@ async function exportToWord(
   progress: vscode.Progress<{ message?: string; increment?: number }>,
   document: vscode.TextDocument
 ): Promise<boolean> {
-  progress.report({ message: 'Converting to Word format...', increment: 30 });
+  progress.report({ message: vscode.l10n.t('Converting to Word format...'), increment: 30 });
 
   try {
     const docxModule = await import('docx');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const docx = (docxModule as any).default ?? docxModule;
 
-    progress.report({ message: 'Building document...', increment: 30 });
+    progress.report({ message: vscode.l10n.t('Building document...'), increment: 30 });
 
     // Parse HTML and convert to docx elements
     const children = await htmlToDocx(html, docx, theme, document);
@@ -1628,7 +1668,7 @@ async function exportToWord(
       ],
     });
 
-    progress.report({ message: 'Saving Word document...', increment: 20 });
+    progress.report({ message: vscode.l10n.t('Saving Word document...'), increment: 20 });
 
     // Generate buffer and write to file
     const buffer = await docx.Packer.toBuffer(doc);

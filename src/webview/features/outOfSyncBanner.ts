@@ -9,6 +9,8 @@
  * reloads the editor. It never takes focus, so typing cannot trigger the reload.
  */
 
+import * as l10n from '../l10n';
+
 let banner: HTMLElement | null = null;
 
 /**
@@ -24,12 +26,13 @@ export function showOutOfSyncBanner(onReload: () => void): void {
   banner.setAttribute('role', 'alert');
   const message = document.createElement('span');
   message.className = 'out-of-sync-banner-message';
-  message.textContent =
-    'This editor is out of sync with the file, and its edits are not being saved.';
+  message.textContent = l10n.t(
+    'This editor is out of sync with the file, and its edits are not being saved.'
+  );
   const reloadButton = document.createElement('button');
   reloadButton.type = 'button';
   reloadButton.className = 'out-of-sync-banner-action';
-  reloadButton.textContent = 'Reload editor';
+  reloadButton.textContent = l10n.t('Reload editor');
   reloadButton.addEventListener('click', onReload);
   banner.append(message, reloadButton);
   document.body.append(banner);

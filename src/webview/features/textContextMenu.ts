@@ -16,6 +16,8 @@
  * and dismisses on outside click, scroll, resize, or blur.
  */
 
+import * as l10n from '../l10n';
+
 /** Actions the menu can trigger. The host wires these to editor commands. */
 export type TextContextMenuAction = 'cut' | 'copy' | 'paste' | 'addToCopilot';
 
@@ -121,7 +123,7 @@ export function createTextContextMenu(): HTMLElement {
   const menu = document.createElement('div');
   menu.className = 'text-context-menu';
   menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', 'Editor actions');
+  menu.setAttribute('aria-label', l10n.t('Editor actions'));
   menu.style.display = 'none';
   // Mounted on the body, outside the ProseMirror DOM, so interacting with the
   // menu never moves the editor caret or disturbs the selection it acts on.
@@ -191,28 +193,28 @@ export function textContextMenuItemSpecs(
   return [
     {
       action: 'cut',
-      label: 'Cut',
+      label: l10n.t('Cut'),
       svgIcon: CUT_SVG_ICON,
       visible: hasSelection,
       enabled: hasSelection,
     },
     {
       action: 'copy',
-      label: 'Copy',
+      label: l10n.t('Copy'),
       iconClass: 'codicon-copy',
       visible: hasSelection,
       enabled: hasSelection,
     },
     {
       action: 'paste',
-      label: 'Paste',
+      label: l10n.t('Paste'),
       iconClass: 'codicon-clippy',
       visible: true,
       enabled: true,
     },
     {
       action: 'addToCopilot',
-      label: 'Add Selection to GitHub Copilot',
+      label: l10n.t('Add Selection to GitHub Copilot'),
       iconClass: 'codicon-copilot',
       visible: hasSelection && copilotAvailable,
       enabled: hasSelection && copilotAvailable,

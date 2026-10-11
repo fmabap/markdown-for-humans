@@ -12,6 +12,7 @@
  */
 
 import { isSvgImageSource } from '../../shared/imageSource';
+import * as l10n from '../l10n';
 
 export interface HugeImageOptions {
   action: 'resize-suggested' | 'resize-custom' | 'use-original';
@@ -79,9 +80,9 @@ function calculateSuggestedResolution(
  * Format file size for display
  */
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024) return l10n.t('{0} B', bytes);
+  if (bytes < 1024 * 1024) return l10n.t('{0} KB', l10n.formatNumber(bytes / 1024, 1));
+  return l10n.t('{0} MB', l10n.formatNumber(bytes / (1024 * 1024), 1));
 }
 
 /**
@@ -162,17 +163,17 @@ export async function showHugeImageDialog(
 
     dialog.innerHTML = `
       <h3 style="margin: 0 0 16px 0; color: var(--vscode-foreground); text-align: center;">
-        Large Image Detected
+        ${l10n.html('Large Image Detected')}
       </h3>
       <div style="margin-bottom: 16px; text-align: center;">
         <p style="margin: 0 0 8px 0; color: var(--vscode-foreground);">
-          This image is very large:
+          ${l10n.html('This image is very large:')}
         </p>
         <p style="margin: 0 0 8px 0; color: var(--vscode-descriptionForeground); font-size: 0.9em;">
-          ${dimensions.width} × ${dimensions.height}px (${formatFileSize(file.size)})
+          ${l10n.html('{0} × {1}px ({2})', dimensions.width, dimensions.height, formatFileSize(file.size))}
         </p>
         <p style="margin: 0; color: var(--vscode-descriptionForeground); font-size: 0.9em;">
-          Suggested size: ${suggested.width} × ${suggested.height}px
+          ${l10n.html('Suggested size: {0} × {1}px', suggested.width, suggested.height)}
         </p>
       </div>
       <div style="display: flex; gap: 8px; justify-content: center; width: 100%;">
@@ -185,7 +186,7 @@ export async function showHugeImageDialog(
           cursor: pointer;
           font-family: var(--vscode-font-family);
           font-weight: 500;
-        ">Resize to Suggested</button>
+        ">${l10n.html('Resize to Suggested')}</button>
         <button id="use-original-btn" style="
           padding: 8px 16px;
           background: var(--vscode-button-secondaryBackground);
@@ -194,7 +195,7 @@ export async function showHugeImageDialog(
           border-radius: 3px;
           cursor: pointer;
           font-family: var(--vscode-font-family);
-        ">Use Original</button>
+        ">${l10n.html('Use Original')}</button>
       </div>
     `;
 

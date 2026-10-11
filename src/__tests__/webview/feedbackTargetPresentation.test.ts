@@ -7,9 +7,11 @@ import {
   createFeedbackTargetPresentationView,
   FEEDBACK_CELL_PREVIEW_COLUMN_LIMIT,
   FEEDBACK_CELL_PREVIEW_ROW_LIMIT,
+  formatFeedbackTargetSourceLines,
   getFeedbackTargetPresentation,
 } from '../../webview/features/feedbackTargetPresentation';
 import { fingerprintFeedbackTable } from '../../webview/features/feedbackSelectionMapping';
+import * as l10n from '../../webview/l10n';
 
 const schema = new Schema({
   nodes: {
@@ -702,5 +704,111 @@ describe('Feedback target presentation', () => {
       preview: null,
       explanation: null,
     });
+  });
+});
+
+describe('Feedback target presentation localization', () => {
+  const wholeBlock = (block: ProseMirrorNode, focus = 'focus') =>
+    getFeedbackTargetPresentation(documentWith(block), {
+      startOrdinal: 0,
+      endOrdinal: 0,
+      focus,
+      presentationReason: 'whole-block-action',
+    });
+  const selectedCells = (rows: number, columns: number) => {
+    const doc = documentWith(table(2, 2));
+    return getFeedbackTargetPresentation(doc, {
+      startOrdinal: 0,
+      endOrdinal: 0,
+      focus: 'selected cells',
+      cellTarget: {
+        version: 1,
+        tableOrdinal: 0,
+        rectangle: { top: 0, left: 0, bottom: rows, right: columns },
+        tableFingerprint: fingerprintFeedbackTable({
+          version: 1,
+          tableOrdinal: 0,
+          table: doc.child(0),
+        }).fingerprint,
+      },
+    });
+  };
+  afterEach(() => l10n.resetL10n());
+
+  it('keeps every singular and plural detail in English when no bundle is loaded', () => {
+    expect(wholeBlock(table(1, 1)).detail).toBe('1 row × 1 column');
+    expect(wholeBlock(table(1, 2)).detail).toBe('1 row × 2 columns');
+    expect(wholeBlock(table(2, 1)).detail).toBe('2 rows × 1 column');
+    expect(wholeBlock(codeBlock('one')).detail).toBe('TypeScript · 1 line');
+    expect(wholeBlock(codeBlock('one\ntwo', null)).detail).toBe('2 lines');
+    expect(selectedCells(1, 1).detail).toBe('Rows 1–1 · Columns 1–1 · 1 cell');
+    expect(wholeBlock(textBlock('heading', 'Plan'))).toMatchObject({
+      label: 'Whole heading',
+      detail: 'heading',
+    });
+    expect(
+      getFeedbackTargetPresentation(documentWith(textBlock('paragraph', 'a'), table(1, 1)), {
+        startOrdinal: 0,
+        endOrdinal: 1,
+        focus: 'a',
+      }).detail
+    ).toBe('2 blocks · paragraph to table');
+    expect(formatFeedbackTargetSourceLines(0, 0, 'source')).toBe(
+      'Source lines validated when saved'
+    );
+    expect(formatFeedbackTargetSourceLines(3, 3, 'source')).toBe('Source line 3');
+    expect(formatFeedbackTargetSourceLines(3, 5, 'source')).toBe('Source lines 3-5');
+    expect(formatFeedbackTargetSourceLines(3, 3, 'containing-source')).toBe(
+      'Containing source line 3'
+    );
+    expect(formatFeedbackTargetSourceLines(3, 5, 'containing-source')).toBe(
+      'Containing source lines 3-5'
+    );
+  });
+
+  it('translates labels, plural details and source lines as whole messages', () => {
+    l10n.configureL10n({
+      'Whole table': 'Tableau entier',
+      '{0} rows × {1} columns': '{0} lignes × {1} colonnes',
+      '{0} row × {1} columns': '{0} ligne × {1} colonnes',
+      'Selected cells': 'Cellules sélectionnées',
+      'Rows {0}–{1} · Columns {2}–{3} · {4} cells':
+        'Lignes {0}–{1} · Colonnes {2}–{3} · {4} cellules',
+      'Whole paragraph': 'Paragraphe entier',
+      paragraph: 'paragraphe',
+      'Containing source lines {0}-{1}': 'Lignes source englobantes {0}-{1}',
+    });
+
+    expect(wholeBlock(table(5, 2))).toMatchObject({
+      label: 'Tableau entier',
+      detail: '5 lignes × 2 colonnes',
+    });
+    expect(wholeBlock(table(1, 2)).detail).toBe('1 ligne × 2 colonnes');
+    expect(selectedCells(2, 2)).toMatchObject({
+      label: 'Cellules sélectionnées',
+      detail: 'Lignes 1–2 · Colonnes 1–2 · 4 cellules',
+    });
+    expect(wholeBlock(textBlock('paragraph', 'Text'))).toMatchObject({
+      label: 'Paragraphe entier',
+      detail: 'paragraphe',
+    });
+    expect(formatFeedbackTargetSourceLines(3, 5, 'containing-source')).toBe(
+      'Lignes source englobantes 3-5'
+    );
+  });
+
+  it('translates the rendered view around the translated label and detail', () => {
+    l10n.configureL10n({
+      'Feedback target: {0}': 'Cible du commentaire : {0}',
+      'Selected cells': 'Cellules sélectionnées',
+      '{0} preview': 'Aperçu : {0}',
+    });
+    const presentation = selectedCells(2, 2);
+    const view = createFeedbackTargetPresentationView({ ownerDocument: document, presentation });
+
+    expect(view.getAttribute('aria-label')).toBe('Cible du commentaire : Cellules sélectionnées');
+    expect(view.querySelector('table')?.getAttribute('aria-label')).toBe(
+      'Aperçu : Rows 1–2 · Columns 1–2 · 4 cells'
+    );
   });
 });

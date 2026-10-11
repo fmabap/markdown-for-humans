@@ -19,6 +19,7 @@ import { isSvgImageSource } from '../../shared/imageSource';
 import { showImageResizeWarning } from './imageResizeWarning';
 import { showLocalImageOutsideRepoDialog } from './localImageOutsideRepoDialog';
 import { getDefaultImagePath } from './imageConfirmation';
+import * as l10n from '../l10n';
 
 /**
  * VS Code API type
@@ -214,7 +215,9 @@ export async function showImageResizeModal(
   if (isSvgImageSource(imageSrc)) {
     vscodeApi.postMessage({
       type: 'showError',
-      message: 'Use Display size for SVG images. Raster resize would replace the vector file.',
+      message: l10n.t(
+        'Use Display size for SVG images. Raster resize would replace the vector file.'
+      ),
     });
     return;
   }
@@ -228,8 +231,9 @@ export async function showImageResizeModal(
     // Show info message - cannot resize external images
     vscodeApi.postMessage({
       type: 'showError',
-      message:
-        'Cannot resize external images. Please download the image to your workspace first, then you can resize it.',
+      message: l10n.t(
+        'Cannot resize external images. Please download the image to your workspace first, then you can resize it.'
+      ),
     });
     return;
   }
@@ -377,11 +381,13 @@ function showResizeModalForLocalImage(
   `;
 
   const aspectRatio = originalWidth / originalHeight;
+  // l10n-ignore: backup folder path, not prose
+  const backupFolderMarkup = '<code style="font-size: 11px;">.md4h/image-backups/</code>';
 
   panel.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <h3 style="margin: 0; color: var(--vscode-foreground); font-size: 14px; font-weight: 600;">
-        Resize Image
+        ${l10n.html('Resize Image')}
       </h3>
       <button id="close-resize-modal" style="
         background: transparent;
@@ -401,10 +407,9 @@ function showResizeModalForLocalImage(
       color: var(--vscode-descriptionForeground);
       line-height: 1.4;
     ">
-      <div id="resize-impact-loading">Checking references…</div>
+      <div id="resize-impact-loading">${l10n.html('Checking references…')}</div>
       <div id="resize-impact-content" style="display: none;">
         <div id="resize-impact-other-files" style="display: none;">
-          Referenced in
           <button
             id="resize-references-pill"
             type="button"
@@ -426,10 +431,9 @@ function showResizeModalForLocalImage(
               line-height: 1;
             "
           >0</button>
-          other file<span id="resize-references-plural">s</span>
         </div>
         <div id="resize-impact-current-file" style="display: none;">
-          Also used <span id="resize-current-count">0</span> times in this file
+          ${l10n.html('Also used {0} times in this file').replace('{0}', '<span id="resize-current-count">0</span>')}
         </div>
       </div>
     </div>
@@ -439,7 +443,7 @@ function showResizeModalForLocalImage(
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
     ">
-      A backup of the original will be saved to <code style="font-size: 11px;">.md4h/image-backups/</code>
+      ${l10n.html('A backup of the original will be saved to {0}').replace('{0}', backupFolderMarkup)}
     </div>
 
     <div
@@ -462,7 +466,7 @@ function showResizeModalForLocalImage(
 
     <div style="margin-bottom: 12px;">
       <label style="display: block; margin-bottom: 6px; color: var(--vscode-foreground); font-size: 12px;">
-        Width (px)
+        ${l10n.html('Width (px)')}
       </label>
       <input
         type="number"
@@ -484,7 +488,7 @@ function showResizeModalForLocalImage(
 
     <div style="margin-bottom: 12px;">
       <label style="display: block; margin-bottom: 6px; color: var(--vscode-foreground); font-size: 12px;">
-        Height (px)
+        ${l10n.html('Height (px)')}
       </label>
       <input
         type="number"
@@ -515,7 +519,7 @@ function showResizeModalForLocalImage(
         cursor: pointer;
         font-family: var(--vscode-font-family);
         font-size: 12px;
-      ">Reset</button>
+      ">${l10n.html('Reset')}</button>
       <button id="cancel-resize" style="
         flex: 1;
         padding: 6px 12px;
@@ -526,7 +530,7 @@ function showResizeModalForLocalImage(
         cursor: pointer;
         font-family: var(--vscode-font-family);
         font-size: 12px;
-      ">Cancel</button>
+      ">${l10n.html('Cancel')}</button>
       <button id="confirm-resize" style="
         flex: 1;
         padding: 6px 12px;
@@ -538,7 +542,7 @@ function showResizeModalForLocalImage(
         font-family: var(--vscode-font-family);
         font-size: 12px;
         font-weight: 500;
-      ">Resize</button>
+      ">${l10n.html('Resize')}</button>
     </div>
   `;
 
@@ -559,7 +563,6 @@ function showResizeModalForLocalImage(
   const impactContent = panel.querySelector('#resize-impact-content') as HTMLElement;
   const impactOtherFilesRow = panel.querySelector('#resize-impact-other-files') as HTMLElement;
   const referencesPill = panel.querySelector('#resize-references-pill') as HTMLButtonElement;
-  const referencesPlural = panel.querySelector('#resize-references-plural') as HTMLElement;
   const impactCurrentFileRow = panel.querySelector('#resize-impact-current-file') as HTMLElement;
   const currentCount = panel.querySelector('#resize-current-count') as HTMLElement;
   const referencesPopover = panel.querySelector('#resize-references-popover') as HTMLElement;
@@ -607,7 +610,7 @@ function showResizeModalForLocalImage(
     `;
 
     const title = document.createElement('div');
-    title.textContent = 'Referenced in other files';
+    title.textContent = l10n.t('Referenced in other files');
     title.style.cssText = `
       font-size: 12px;
       font-weight: 600;
@@ -639,7 +642,7 @@ function showResizeModalForLocalImage(
 
     if (!payload.otherFiles || payload.otherFiles.length === 0) {
       const empty = document.createElement('div');
-      empty.textContent = 'No other references found.';
+      empty.textContent = l10n.t('No other references found.');
       empty.style.cssText = `
         font-size: 12px;
         color: var(--vscode-descriptionForeground);
@@ -651,8 +654,7 @@ function showResizeModalForLocalImage(
     for (const fileRef of payload.otherFiles) {
       const firstMatch = fileRef.matches?.[0];
       const firstLine = typeof firstMatch?.line === 'number' ? firstMatch.line + 1 : 1;
-      const additional =
-        (fileRef.matches?.length ?? 0) > 1 ? ` (+${fileRef.matches.length - 1} more)` : '';
+      const additionalMatches = Math.max((fileRef.matches?.length ?? 0) - 1, 0);
 
       const row = document.createElement('div');
       row.style.cssText = `
@@ -688,7 +690,10 @@ function showResizeModalForLocalImage(
       pathLabel.title = fileRef.fsPath;
 
       const meta = document.createElement('div');
-      meta.textContent = `Line ${firstLine}${additional}`;
+      meta.textContent =
+        additionalMatches > 0
+          ? l10n.t('Line {0} (+{1} more)', firstLine, additionalMatches)
+          : l10n.t('Line {0}', firstLine);
       meta.style.cssText = `
         margin-top: 2px;
         font-size: 11px;
@@ -722,7 +727,7 @@ function showResizeModalForLocalImage(
         return btn;
       };
 
-      const openBtn = makeActionButton('Open');
+      const openBtn = makeActionButton(l10n.t('Open'));
       openBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
@@ -734,7 +739,7 @@ function showResizeModalForLocalImage(
         });
       });
 
-      const openSideBtn = makeActionButton('Side');
+      const openSideBtn = makeActionButton(l10n.t('Side'));
       openSideBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
@@ -837,7 +842,11 @@ function showResizeModalForLocalImage(
         const otherCount = referencePayload.otherFiles.length;
         if (otherCount > 0) {
           referencesPill.textContent = String(otherCount);
-          referencesPlural.textContent = otherCount === 1 ? '' : 's';
+          // The count sits inside the sentence wherever the language puts it.
+          const [before, after] = l10n
+            .t(otherCount === 1 ? 'Referenced in {0} other file' : 'Referenced in {0} other files')
+            .split('{0}');
+          impactOtherFilesRow.replaceChildren(before, referencesPill, after);
           impactOtherFilesRow.style.display = 'block';
         }
 
@@ -852,7 +861,7 @@ function showResizeModalForLocalImage(
       })
       .catch(error => {
         console.warn('[MD4H] Failed to fetch image references:', error);
-        impactLoading.textContent = 'References unavailable';
+        impactLoading.textContent = l10n.t('References unavailable');
       });
   } else {
     impactRoot.style.display = 'none';
@@ -880,13 +889,13 @@ function showResizeModalForLocalImage(
     if (width > originalWidth) {
       width = originalWidth;
       widthInput.value = String(originalWidth);
-      showError(`Cannot exceed original width (${originalWidth}px)`);
+      showError(l10n.t('Cannot exceed original width ({0}px)', originalWidth));
       hasError = true;
     }
     if (height > originalHeight) {
       height = originalHeight;
       heightInput.value = String(originalHeight);
-      showError(`Cannot exceed original height (${originalHeight}px)`);
+      showError(l10n.t('Cannot exceed original height ({0}px)', originalHeight));
       hasError = true;
     }
 

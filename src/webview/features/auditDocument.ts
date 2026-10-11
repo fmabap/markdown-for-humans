@@ -2,6 +2,7 @@ import { Editor, Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { getLevenshteinDistance } from './levenshtein';
+import * as l10n from '../l10n';
 
 export type AuditIssueType = 'link' | 'image' | 'heading';
 
@@ -101,7 +102,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
       while ((match = emptyImageRegex.exec(node.text)) !== null) {
         issues.push({
           type: 'image',
-          message: 'Image has no source path.',
+          message: l10n.t('Image has no source path.'),
           pos: pos + match.index,
           nodeSize: match[0].length,
           target: '',
@@ -114,7 +115,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
       if (!src) {
         issues.push({
           type: 'image',
-          message: 'Image has no source path.',
+          message: l10n.t('Image has no source path.'),
           pos,
           nodeSize: node.nodeSize,
           target: '',
@@ -129,7 +130,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
             if (!result.exists) {
               issues.push({
                 type: 'image',
-                message: `Image file not found: ${src}`,
+                message: l10n.t('Image file not found: {0}', src),
                 pos,
                 nodeSize: node.nodeSize,
                 target: src,
@@ -144,7 +145,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
             if (status === 'timeout') {
               issues.push({
                 type: 'image',
-                message: `Verification timed out for image: ${src}`,
+                message: l10n.t('Verification timed out for image: {0}', src),
                 pos,
                 nodeSize: node.nodeSize,
                 target: src,
@@ -152,7 +153,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
             } else if (status === 'unreachable') {
               issues.push({
                 type: 'image',
-                message: `Broken image URL: ${src}`,
+                message: l10n.t('Broken image URL: {0}', src),
                 pos,
                 nodeSize: node.nodeSize,
                 target: src,
@@ -171,7 +172,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
         if (!href) {
           issues.push({
             type: 'link',
-            message: 'Link is empty.',
+            message: l10n.t('Link is empty.'),
             pos,
             nodeSize: node.nodeSize,
             target: '',
@@ -188,7 +189,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
               if (result.timedOut) {
                 issues.push({
                   type: 'link',
-                  message: `Verification timed out for local File: ${href}`,
+                  message: l10n.t('Verification timed out for local File: {0}', href),
                   pos,
                   nodeSize: node.nodeSize,
                   target: href,
@@ -196,7 +197,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
               } else if (!result.exists) {
                 issues.push({
                   type: 'link',
-                  message: `Linked file not found: ${href}`,
+                  message: l10n.t('Linked file not found: {0}', href),
                   pos,
                   nodeSize: node.nodeSize,
                   target: href,
@@ -211,7 +212,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
               if (status === 'timeout') {
                 issues.push({
                   type: 'link',
-                  message: `Verification timed out for link: ${href}`,
+                  message: l10n.t('Verification timed out for link: {0}', href),
                   pos,
                   nodeSize: node.nodeSize,
                   target: href,
@@ -219,7 +220,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
               } else if (status === 'unreachable') {
                 issues.push({
                   type: 'link',
-                  message: `Broken link URL: ${href}`,
+                  message: l10n.t('Broken link URL: {0}', href),
                   pos,
                   nodeSize: node.nodeSize,
                   target: href,
@@ -239,7 +240,7 @@ export async function runAudit(editor: Editor): Promise<AuditIssue[]> {
       const suggestions = findBestMatches(link.slug, Array.from(existingSlugs));
       issues.push({
         type: 'heading',
-        message: `Heading anchor not found: #${link.slug}`,
+        message: l10n.t('Heading anchor not found: #{0}', link.slug),
         pos: link.pos,
         nodeSize: link.nodeSize,
         target: link.slug,

@@ -30,6 +30,7 @@ import {
   FEEDBACK_ERROR_CODES,
   FEEDBACK_MAX_EXACT_CELL_COUNT_PER_SESSION,
 } from '../../shared/feedbackProtocol';
+import * as l10n from '../../webview/l10n';
 
 const reviewControllers = new Set<ReturnType<typeof createReviewController>>();
 
@@ -10452,5 +10453,119 @@ describe('Feedback review controller', () => {
         button => !button.disabled
       )
     ).toBe(true);
+  });
+});
+
+describe('Feedback review localization', () => {
+  // Leaves out "Start new" on purpose, to exercise the fallback to English.
+  const sampleBundle: Record<string, string> = {
+    Resume: 'Fortsetzen',
+    'Open feedback {0}': 'Feedback {0} öffnen',
+    'Feedback review started. Snapshot saved.': 'Feedback-Prüfung gestartet. Snapshot gespeichert.',
+    '{0} comment can be resumed from the saved snapshot.':
+      '{0} Kommentar kann aus dem gespeicherten Snapshot fortgesetzt werden.',
+    '{0} comments can be resumed from the saved snapshot.':
+      '{0} Kommentare können aus dem gespeicherten Snapshot fortgesetzt werden.',
+  };
+  let host: FeedbackReviewHost;
+
+  const offerDraft = (itemCount: number): void => {
+    const controller = createFeedbackReviewController({ editor: createEditorFixture(), host });
+    controller.handleHostMessage({
+      type: 'feedback.drafts.available',
+      drafts: [
+        {
+          round: '20260821T093000Z-k4p9',
+          createdAt: '2026-08-21T09:30:00.000Z',
+          itemCount,
+          feedbackFile: '.md4h/feedback/docs/guide.md--20260821T093000Z-k4p9/feedback.md',
+        },
+      ],
+    });
+  };
+  const draftDetail = (): string =>
+    document.querySelector('.feedback-draft-detail')?.textContent ?? '';
+  const activate = async (): Promise<void> => {
+    const controller = createFeedbackReviewController({ editor: createEditorFixture(), host });
+    controller.activate({
+      sessionId: 'session-1',
+      source: 'docs/guide.md',
+      sourceSha256: 'b'.repeat(64),
+      round: 'round-1',
+      anchors: [{ ordinal: 1, startLine: 3, endLine: 3 }],
+      items: createSavedFeedbackItems(1),
+    });
+    // announce() writes the live region on the next task.
+    await new Promise(resolve => window.setTimeout(resolve, 0));
+  };
+
+  beforeEach(() => {
+    host = { postMessage: jest.fn() };
+  });
+
+  afterEach(() => {
+    reviewControllers.forEach(controller => controller.deactivate());
+    reviewControllers.clear();
+    window.dispatchEvent(new CustomEvent('feedbackSessionEnded'));
+    document.body.innerHTML = '';
+    l10n.resetL10n();
+  });
+
+  it('shows English when no bundle is loaded', async () => {
+    offerDraft(1);
+    expect(document.querySelector('[data-feedback-draft-resume]')?.textContent).toBe('Resume');
+    expect(draftDetail()).toBe('1 comment can be resumed from the saved snapshot.');
+
+    await activate();
+    expect(document.querySelector('[data-feedback-card="F1"]')?.getAttribute('aria-label')).toBe(
+      'Open feedback F1'
+    );
+    expect(document.querySelector('.feedback-live-region')?.textContent).toBe(
+      'Feedback review started. Snapshot saved.'
+    );
+  });
+
+  it('shows the translated button, card label and announcement', async () => {
+    l10n.configureL10n(sampleBundle);
+
+    offerDraft(1);
+    expect(document.querySelector('[data-feedback-draft-resume]')?.textContent).toBe('Fortsetzen');
+    expect(document.querySelector('[data-feedback-start-new]')?.textContent).toBe('Start new');
+
+    await activate();
+    expect(document.querySelector('[data-feedback-card="F1"]')?.getAttribute('aria-label')).toBe(
+      'Feedback F1 öffnen'
+    );
+    expect(document.querySelector('.feedback-live-region')?.textContent).toBe(
+      'Feedback-Prüfung gestartet. Snapshot gespeichert.'
+    );
+  });
+
+  it('translates the singular and the plural comment count as whole sentences', () => {
+    l10n.configureL10n(sampleBundle);
+
+    offerDraft(1);
+    expect(draftDetail()).toBe(
+      '1 Kommentar kann aus dem gespeicherten Snapshot fortgesetzt werden.'
+    );
+
+    document.body.innerHTML = '';
+    offerDraft(2);
+    expect(draftDetail()).toBe(
+      '2 Kommentare können aus dem gespeicherten Snapshot fortgesetzt werden.'
+    );
+  });
+
+  it('keeps the values sent to the host untranslated', () => {
+    l10n.configureL10n(sampleBundle);
+
+    offerDraft(2);
+    document.querySelector<HTMLButtonElement>('[data-feedback-draft-resume]')?.click();
+
+    expect(host.postMessage).toHaveBeenCalledWith({
+      type: 'feedback.draft.resume',
+      requestId: expect.any(String),
+      round: '20260821T093000Z-k4p9',
+    });
   });
 });

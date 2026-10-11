@@ -104,6 +104,8 @@ export async function runPdfExportFixture({ repository, temporary, chrome, html,
                 withProgress: async (_options, callback) => callback({ report() {} }, { isCancellationRequested: false })
               };
               export const env = { openExternal: async () => true };
+              const format = (message, args) => message.replace(/\\{(\\d+)\\}/g, (whole, index) => index in args ? String(args[index]) : whole);
+              export const l10n = { t: (message, ...args) => typeof message === 'string' ? format(message, args) : format(message.message, message.args ?? []) };
             `,
             loader: 'js',
           }));

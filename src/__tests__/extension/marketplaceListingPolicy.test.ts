@@ -9,6 +9,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { readManifestSources, readResolvedManifest } from '../l10n/resolvedManifest';
 
 const rootDir = path.resolve(__dirname, '../../..');
 
@@ -25,8 +26,11 @@ interface PackageManifest {
   };
 }
 
-const manifestText = fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8');
-const manifest = JSON.parse(manifestText) as PackageManifest;
+// The listing and VS Code show the English text that `%key%` placeholders stand for,
+// so the policy reads the manifest with that text filled in.
+const sources = readManifestSources();
+const manifestText = sources.manifest + sources.english;
+const manifest = readResolvedManifest<PackageManifest>();
 
 const PRODUCT_NAME = 'Markdown Editor for Humans';
 

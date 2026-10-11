@@ -74,12 +74,13 @@
     "image-resizing",
     "ai"
   ],
+  "l10n": "./l10n",
   "main": "./dist/extension.js",
   "contributes": {
     "colors": [
       {
         "id": "markdownForHumans.codeKeyword",
-        "description": "Keyword color in Markdown Editor for Humans code blocks.",
+        "description": "%color.codeKeyword.description%",
         "defaults": {
           "light": "#a31545",
           "dark": "#c586c0",
@@ -89,7 +90,7 @@
       },
       {
         "id": "markdownForHumans.codeString",
-        "description": "String and regular expression color in Markdown Editor for Humans code blocks.",
+        "description": "%color.codeString.description%",
         "defaults": {
           "light": "#a31515",
           "dark": "#ce9178",
@@ -99,7 +100,7 @@
       },
       {
         "id": "markdownForHumans.codeValue",
-        "description": "Number, attribute, and variable color in Markdown Editor for Humans code blocks.",
+        "description": "%color.codeValue.description%",
         "defaults": {
           "light": "#0451a5",
           "dark": "#b5cea8",
@@ -109,7 +110,7 @@
       },
       {
         "id": "markdownForHumans.codeFunction",
-        "description": "Function and declaration color in Markdown Editor for Humans code blocks.",
+        "description": "%color.codeFunction.description%",
         "defaults": {
           "light": "#6f42c1",
           "dark": "#dcdcaa",
@@ -119,7 +120,7 @@
       },
       {
         "id": "markdownForHumans.codeType",
-        "description": "Type, built-in, and tag name color in Markdown Editor for Humans code blocks.",
+        "description": "%color.codeType.description%",
         "defaults": {
           "light": "#00695c",
           "dark": "#4ec9b0",
@@ -129,7 +130,7 @@
       },
       {
         "id": "markdownForHumans.codeComment",
-        "description": "Comment color in Markdown Editor for Humans code blocks.",
+        "description": "%color.codeComment.description%",
         "defaults": {
           "light": "#57606a",
           "dark": "#a3a3a3",
@@ -139,7 +140,7 @@
       },
       {
         "id": "markdownForHumans.codeAddition",
-        "description": "Added-line color in Markdown Editor for Humans diff code blocks.",
+        "description": "%color.codeAddition.description%",
         "defaults": {
           "light": "#116329",
           "dark": "#7ee787",
@@ -149,7 +150,7 @@
       },
       {
         "id": "markdownForHumans.codeDeletion",
-        "description": "Deleted-line color in Markdown Editor for Humans diff code blocks.",
+        "description": "%color.codeDeletion.description%",
         "defaults": {
           "light": "#a40e26",
           "dark": "#ffa198",
@@ -161,7 +162,7 @@
     "customEditors": [
       {
         "viewType": "markdownForHumans.editor",
-        "displayName": "Visual Editor",
+        "displayName": "%customEditor.editor.displayName%",
         "selector": [
           {
             "filenamePattern": "*.md",
@@ -186,70 +187,70 @@
     "commands": [
       {
         "command": "markdownForHumans.openFile",
-        "title": "Open with Markdown Editor for Humans"
+        "title": "%command.openFile.title%"
       },
       {
         "command": "markdownForHumans.outline.revealCurrent",
-        "title": "Outline: Reveal Current Heading",
+        "title": "%command.outline.revealCurrent.title%",
         "icon": "$(target)"
       },
       {
         "command": "markdownForHumans.outline.filter",
-        "title": "Outline: Filter Headings",
+        "title": "%command.outline.filter.title%",
         "icon": "$(search)"
       },
       {
         "command": "markdownForHumans.outline.clearFilter",
-        "title": "Outline: Clear Filter",
+        "title": "%command.outline.clearFilter.title%",
         "icon": "$(close)"
       },
       {
         "command": "markdownForHumans.toggleFormattingShortcuts",
-        "title": "Markdown Editor for Humans: Toggle Formatting Shortcuts (Cmd/Ctrl+B/I/U)"
+        "title": "%command.toggleFormattingShortcuts.title%"
       },
       {
         "command": "markdownForHumans.feedback.start",
-        "title": "Markdown Editor for Humans: Start Feedback"
+        "title": "%command.feedback.start.title%"
       },
       {
         "command": "markdownForHumans.feedback.commentSelection",
-        "title": "Markdown Editor for Humans: Add Feedback to Selection"
+        "title": "%command.feedback.commentSelection.title%"
       },
       {
         "command": "markdownForHumans.feedback.chooseScope",
-        "title": "Markdown Editor for Humans: Choose Feedback Scope"
+        "title": "%command.feedback.chooseScope.title%"
       },
       {
         "command": "markdownForHumans.feedback.captureArea",
-        "title": "Markdown Editor for Humans: Capture Feedback Area"
+        "title": "%command.feedback.captureArea.title%"
       },
       {
         "command": "markdownForHumans.feedback.captureSelectedBlocks",
-        "title": "Markdown Editor for Humans: Capture Selected Blocks"
+        "title": "%command.feedback.captureSelectedBlocks.title%"
       },
       {
         "command": "markdownForHumans.feedback.toggleComments",
-        "title": "Markdown Editor for Humans: Toggle Feedback Comments"
+        "title": "%command.feedback.toggleComments.title%"
       },
       {
         "command": "markdownForHumans.feedback.next",
-        "title": "Markdown Editor for Humans: Next Feedback"
+        "title": "%command.feedback.next.title%"
       },
       {
         "command": "markdownForHumans.feedback.previous",
-        "title": "Markdown Editor for Humans: Previous Feedback"
+        "title": "%command.feedback.previous.title%"
       },
       {
         "command": "markdownForHumans.feedback.finish",
-        "title": "Markdown Editor for Humans: Finish Feedback and Copy Prompt"
+        "title": "%command.feedback.finish.title%"
       },
       {
         "command": "markdownForHumans.feedback.reveal",
-        "title": "Markdown Editor for Humans: Reveal Feedback File"
+        "title": "%command.feedback.reveal.title%"
       },
       {
         "command": "markdownForHumans.feedback.discard",
-        "title": "Markdown Editor for Humans: Discard Feedback Draft"
+        "title": "%command.feedback.discard.title%"
       }
     ],
     "keybindings": [
@@ -264,7 +265,7 @@
       "explorer": [
         {
           "id": "markdownForHumansOutline",
-          "name": "Markdown Editor for Humans: Outline",
+          "name": "%view.outline.name%",
           "when": "markdownForHumans.isActive"
         }
       ]
@@ -303,12 +304,12 @@
       ]
     },
     "configuration": {
-      "title": "Markdown Editor for Humans",
+      "title": "%configuration.title%",
       "properties": {
         "markdownForHumans.imagePath": {
           "type": "string",
           "default": "images",
-          "description": "Folder path for saved images. Interpreted relative to markdownForHumans.imagePathBase."
+          "description": "%configuration.imagePath.description%"
         },
         "markdownForHumans.imagePathBase": {
           "type": "string",
@@ -317,22 +318,22 @@
             "workspaceFolder"
           ],
           "default": "relativeToDocument",
-          "description": "Controls whether Image Path is relative to the current markdown file folder or the workspace folder."
+          "description": "%configuration.imagePathBase.description%"
         },
         "markdownForHumans.chromePath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to Google Chrome or Chromium executable for PDF export. Leave empty to auto-detect.\n\n**Download Chrome:**\n- [Windows/Mac/Linux](https://www.google.com/chrome/)\n- [Chromium (open source)](https://www.chromium.org/getting-involved/download-chromium/)\n\n**Common paths:**\n- **Mac:** `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`\n- **Windows:** `C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`\n- **Linux:** `/usr/bin/google-chrome` or `/usr/bin/chromium`"
+          "markdownDescription": "%configuration.chromePath.markdownDescription%"
         },
         "markdownForHumans.imageResize.skipWarning": {
           "type": "boolean",
           "default": false,
-          "description": "Skip the warning dialog when resizing images. When enabled, images will be resized immediately without confirmation."
+          "description": "%configuration.imageResize.skipWarning.description%"
         },
         "markdownForHumans.feedback.handoffPromptTemplate": {
           "type": "string",
           "default": "Implement the sealed feedback bundle at {{feedbackFile}}. First verify the source SHA-256. Inspect every referenced image. Edit the workspace files required by the feedback, but do not modify or delete the feedback bundle. Address every feedback ID, run appropriate checks, report the outcome per ID, and stop if the source hash differs.",
-          "markdownDescription": "Prompt copied after a feedback bundle is sealed. `{{feedbackFile}}` is required and expands as Markdown inline code. Optional placeholders are `{{source}}` (also Markdown inline code), `{{sourceSha256}}`, `{{itemCount}}`, and `{{round}}`. Invalid or oversized templates safely fall back to this built-in prompt.",
+          "markdownDescription": "%configuration.feedback.handoffPromptTemplate.markdownDescription%",
           "scope": "resource",
           "editPresentation": "multilineText",
           "maxLength": 16384
@@ -344,12 +345,12 @@
             "strip"
           ],
           "default": "strip",
-          "description": "Controls whether extra blank lines are preserved or removed in the editor and saved file."
+          "description": "%configuration.blankLines.mode.description%"
         },
         "markdownForHumans.imagePreview.hover.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable the image hover overlay that shades images and displays metadata (resolution, file size, etc.) on hover.",
+          "description": "%configuration.imagePreview.hover.enabled.description%",
           "scope": "application"
         },
         "markdownForHumans.paragraph.spacingBefore": {
@@ -357,7 +358,7 @@
           "default": 0,
           "minimum": 0,
           "maximum": 72,
-          "description": "Space before paragraphs in points (margin-top). Default: 0pt",
+          "description": "%configuration.paragraph.spacingBefore.description%",
           "scope": "application"
         },
         "markdownForHumans.paragraph.spacingAfter": {
@@ -365,7 +366,7 @@
           "default": 0,
           "minimum": 0,
           "maximum": 72,
-          "description": "Space after paragraphs in points (margin-bottom). Default: 0pt",
+          "description": "%configuration.paragraph.spacingAfter.description%",
           "scope": "application"
         },
         "markdownForHumans.zoom": {
@@ -373,18 +374,63 @@
           "default": 100,
           "minimum": 50,
           "maximum": 200,
-          "description": "Zoom level for the editor as a percentage. 100 = default size, 150 = 50% larger, etc.",
+          "description": "%configuration.zoom.description%",
+          "scope": "application"
+        },
+        "markdownForHumans.font.family": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "markdownDescription": "%configuration.font.family.markdownDescription%",
+          "scope": "application"
+        },
+        "markdownForHumans.font.weight": {
+          "type": "number",
+          "default": 400,
+          "minimum": 100,
+          "maximum": 900,
+          "markdownDescription": "%configuration.font.weight.markdownDescription%",
+          "scope": "application"
+        },
+        "markdownForHumans.font.lineHeight": {
+          "type": "number",
+          "default": 1.58,
+          "minimum": 1,
+          "maximum": 3,
+          "markdownDescription": "%configuration.font.lineHeight.markdownDescription%",
+          "scope": "application"
+        },
+        "markdownForHumans.font.letterSpacing": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 0.5,
+          "markdownDescription": "%configuration.font.letterSpacing.markdownDescription%",
+          "scope": "application"
+        },
+        "markdownForHumans.font.wordSpacing": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "markdownDescription": "%configuration.font.wordSpacing.markdownDescription%",
+          "scope": "application"
+        },
+        "markdownForHumans.font.useEditorFont": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%configuration.font.useEditorFont.markdownDescription%",
           "scope": "application"
         },
         "markdownForHumans.enableMath": {
           "type": "boolean",
           "default": true,
-          "description": "Render LaTeX math expressions using KaTeX. Use $...$ for inline math and $$...$$ for display math. Toggling this setting requires reopening the editor."
+          "description": "%configuration.enableMath.description%"
         },
         "markdownForHumans.formattingShortcuts.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "When enabled, Cmd/Ctrl+B, +I, and +U toggle bold/italic/underline inside the editor. Disable this if you rely on VS Code keybindings that use the same chords (e.g. a sidebar toggle rebound to Cmd+B) and want them to keep working while a markdown file is open in this editor.",
+          "description": "%configuration.formattingShortcuts.enabled.description%",
           "scope": "application"
         }
       }
@@ -405,6 +451,7 @@
     "lint": "eslint src --ext ts --max-warnings 0",
     "lint:fix": "eslint src --ext ts --fix",
     "test": "jest",
+    "l10n:extract": "node scripts/l10n-extract.js",
     "test:integration": "npm run build:release && vscode-test",
     "test:feedback-capture": "node scripts/feedback-capture-fixture/run.mjs",
     "test:svg-browser": "node scripts/svg-image-fixture/run.mjs",

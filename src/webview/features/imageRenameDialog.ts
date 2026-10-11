@@ -11,6 +11,7 @@
  * The actual rename operation is handled by the extension.
  */
 import { splitImageSource } from '../../shared/imageSource';
+import * as l10n from '../l10n';
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -90,7 +91,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
 
   dialog.innerHTML = `
     <h3 style="margin: 0 0 16px 0; font-size: 16px; color: var(--vscode-foreground);">
-      Rename Image
+      ${l10n.html('Rename Image')}
     </h3>
 
     <div id="rename-impact" style="
@@ -99,10 +100,9 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
       color: var(--vscode-descriptionForeground);
       line-height: 1.4;
     ">
-      <div id="rename-impact-loading">Checking references…</div>
+      <div id="rename-impact-loading">${l10n.html('Checking references…')}</div>
       <div id="rename-impact-content" style="display: none;">
         <div id="rename-impact-other-files" style="display: none;">
-          Referenced in
           <button
             id="rename-references-pill"
             type="button"
@@ -124,10 +124,9 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
               line-height: 1;
             "
           >0</button>
-          other file<span id="rename-references-plural">s</span>
         </div>
         <div id="rename-impact-current-file" style="display: none;">
-          Also used <span id="rename-current-count">0</span> times in this file
+          ${l10n.html('Also used {0} times in this file').replace('{0}', '<span id="rename-current-count">0</span>')}
         </div>
       </div>
     </div>
@@ -152,7 +151,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
 
     <div style="margin-bottom: 16px;">
       <label style="display: block; margin-bottom: 8px; font-size: 13px; color: var(--vscode-descriptionForeground);">
-        New filename (without extension)
+        ${l10n.html('New filename (without extension)')}
       </label>
       <input type="text" class="rename-input" style="
         width: 100%;
@@ -179,10 +178,9 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
       font-size: 12px;
       line-height: 1.4;
     ">
-      <div style="font-weight: 600; margin-bottom: 6px;">Name collision</div>
+      <div style="font-weight: 600; margin-bottom: 6px;">${l10n.html('Name collision')}</div>
       <div>
-        A file named <code id="rename-collision-filename"></code> already exists.
-        Overwrite it?
+        ${l10n.html('A file named {0} already exists. Overwrite it?').replace('{0}', '<code id="rename-collision-filename"></code>')}
       </div>
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
         <button id="rename-collision-cancel" type="button" style="
@@ -193,7 +191,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
           border: 1px solid var(--vscode-panel-border);
           border-radius: 4px;
           cursor: pointer;
-        ">Cancel</button>
+        ">${l10n.html('Cancel')}</button>
         <button id="rename-collision-overwrite" type="button" style="
           padding: 6px 10px;
           font-size: 12px;
@@ -202,7 +200,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
           border: none;
           border-radius: 4px;
           cursor: pointer;
-        ">Overwrite</button>
+        ">${l10n.html('Overwrite')}</button>
       </div>
     </div>
 
@@ -215,7 +213,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
         border: 1px solid var(--vscode-panel-border);
         border-radius: 4px;
         cursor: pointer;
-      ">Cancel</button>
+      ">${l10n.html('Cancel')}</button>
       <button class="rename-btn" style="
         padding: 8px 16px;
         font-size: 13px;
@@ -224,7 +222,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
         border: none;
         border-radius: 4px;
         cursor: pointer;
-      ">Rename</button>
+      ">${l10n.html('Rename')}</button>
     </div>
   `;
 
@@ -235,7 +233,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
   // Filename text can contain quotes and markup characters after URL decoding.
   input.value = currentName;
   const extensionLabel = dialog.querySelector('.rename-extension') as HTMLElement;
-  extensionLabel.textContent = `Extension: .${extension}`;
+  extensionLabel.textContent = l10n.t('Extension: .{0}', extension);
   const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
   const renameBtn = dialog.querySelector('.rename-btn') as HTMLButtonElement;
   const impactRoot = dialog.querySelector('#rename-impact') as HTMLElement;
@@ -243,7 +241,6 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
   const impactContent = dialog.querySelector('#rename-impact-content') as HTMLElement;
   const impactOtherFilesRow = dialog.querySelector('#rename-impact-other-files') as HTMLElement;
   const referencesPill = dialog.querySelector('#rename-references-pill') as HTMLButtonElement;
-  const referencesPlural = dialog.querySelector('#rename-references-plural') as HTMLElement;
   const impactCurrentFileRow = dialog.querySelector('#rename-impact-current-file') as HTMLElement;
   const currentCount = dialog.querySelector('#rename-current-count') as HTMLElement;
   const referencesPopover = dialog.querySelector('#rename-references-popover') as HTMLElement;
@@ -285,7 +282,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
     `;
 
     const title = document.createElement('div');
-    title.textContent = 'Referenced in other files';
+    title.textContent = l10n.t('Referenced in other files');
     title.style.cssText = `
       font-size: 12px;
       font-weight: 600;
@@ -317,7 +314,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
 
     if (!payload.otherFiles || payload.otherFiles.length === 0) {
       const empty = document.createElement('div');
-      empty.textContent = 'No other references found.';
+      empty.textContent = l10n.t('No other references found.');
       empty.style.cssText = `
         font-size: 12px;
         color: var(--vscode-descriptionForeground);
@@ -329,8 +326,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
     for (const fileRef of payload.otherFiles) {
       const firstMatch = fileRef.matches?.[0];
       const firstLine = typeof firstMatch?.line === 'number' ? firstMatch.line + 1 : 1;
-      const additional =
-        (fileRef.matches?.length ?? 0) > 1 ? ` (+${fileRef.matches.length - 1} more)` : '';
+      const additionalMatches = Math.max((fileRef.matches?.length ?? 0) - 1, 0);
 
       const row = document.createElement('div');
       row.style.cssText = `
@@ -366,7 +362,10 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
       pathLabel.title = fileRef.fsPath;
 
       const meta = document.createElement('div');
-      meta.textContent = `Line ${firstLine}${additional}`;
+      meta.textContent =
+        additionalMatches > 0
+          ? l10n.t('Line {0} (+{1} more)', firstLine, additionalMatches)
+          : l10n.t('Line {0}', firstLine);
       meta.style.cssText = `
         margin-top: 2px;
         font-size: 11px;
@@ -400,7 +399,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
         return btn;
       };
 
-      const openBtn = makeActionButton('Open');
+      const openBtn = makeActionButton(l10n.t('Open'));
       openBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
@@ -412,7 +411,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
         });
       });
 
-      const openSideBtn = makeActionButton('Side');
+      const openSideBtn = makeActionButton(l10n.t('Side'));
       openSideBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
@@ -507,7 +506,11 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
         const otherCount = referencePayload.otherFiles.length;
         if (otherCount > 0) {
           referencesPill.textContent = String(otherCount);
-          referencesPlural.textContent = otherCount === 1 ? '' : 's';
+          // The count sits inside the sentence wherever the language puts it.
+          const [before, after] = l10n
+            .t(otherCount === 1 ? 'Referenced in {0} other file' : 'Referenced in {0} other files')
+            .split('{0}');
+          impactOtherFilesRow.replaceChildren(before, referencesPill, after);
           impactOtherFilesRow.style.display = 'block';
         }
 
@@ -522,7 +525,7 @@ export function showImageRenameDialog(img: HTMLImageElement, vscodeApi: VsCodeAp
       })
       .catch(error => {
         console.warn('[MD4H] Failed to fetch image references:', error);
-        impactLoading.textContent = 'References unavailable';
+        impactLoading.textContent = l10n.t('References unavailable');
       });
   } else {
     impactRoot.style.display = 'none';

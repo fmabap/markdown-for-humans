@@ -11,6 +11,7 @@
  */
 
 import { Editor } from '@tiptap/core';
+import * as l10n from '../l10n';
 
 /**
  * Export content data structure
@@ -65,7 +66,7 @@ export async function collectExportContent(editor: Editor): Promise<ExportConten
           // Replace SVG with img tag in cloned content
           const imgElement = document.createElement('img');
           imgElement.src = pngDataUrl;
-          imgElement.alt = `Mermaid diagram ${i + 1}`;
+          imgElement.alt = l10n.t('Mermaid diagram {0}', i + 1);
           imgElement.className = 'mermaid-export-image';
           imgElement.setAttribute('data-mermaid-id', id);
 
@@ -159,5 +160,5 @@ export function getDocumentTitle(editor: Editor): string {
   }
 
   // Fallback to "Untitled Document"
-  return 'Untitled Document';
+  return l10n.t('Untitled Document');
 }

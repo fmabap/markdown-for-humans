@@ -28,6 +28,7 @@ import {
   extractImagePathFromDataTransfer,
   hasImageFiles,
 } from './imageDragDrop';
+import * as l10n from '../l10n';
 
 /**
  * VS Code API type
@@ -84,11 +85,13 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
     let inserting = false;
     let selectionRevision = 0;
     let targetFolder = getRememberedFolder() || getDefaultImagePath();
+    // l10n-ignore: key names stay as printed on the keyboard
+    const pasteShortcutKey = navigator.platform.toLowerCase().includes('mac') ? 'Cmd' : 'Ctrl';
 
     dialog.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="margin: 0; color: var(--vscode-foreground);">
-          📷 Insert Image
+          📷 ${l10n.html('Insert Image')}
         </h3>
         <button id="close-insert-dialog" style="
           background: transparent;
@@ -114,15 +117,15 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
       ">
         <div style="font-size: 48px; margin-bottom: 12px;">📁</div>
         <div style="color: var(--vscode-foreground); font-size: 14px; margin-bottom: 8px;">
-          Drag & drop images here
+          ${l10n.html('Drag & drop images here')}
         </div>
         <div style="color: var(--vscode-descriptionForeground); font-size: 12px;">
-          or click to browse
+          ${l10n.html('or click to browse')}
         </div>
       </div>
 
       <div style="text-align: center; margin-bottom: 20px;">
-        <span style="color: var(--vscode-descriptionForeground); font-size: 12px; margin: 0 12px;">OR</span>
+        <span style="color: var(--vscode-descriptionForeground); font-size: 12px; margin: 0 12px;">${l10n.html('OR')}</span>
       </div>
 
       <div style="margin-bottom: 20px;">
@@ -137,12 +140,12 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
           font-family: var(--vscode-font-family);
           font-size: 13px;
           font-weight: 500;
-        ">📁 Choose Files...</button>
+        ">📁 ${l10n.html('Choose Files...')}</button>
       </div>
 
       <div id="selected-files" style="display: none; margin-bottom: 20px;">
         <div style="font-size: 12px; color: var(--vscode-foreground); margin-bottom: 8px;">
-          Selected: <span id="file-count"></span>
+          ${l10n.html('Selected: {0}').replace('{0}', '<span id="file-count"></span>')}
         </div>
         <div id="file-list" style="
           max-height: 150px;
@@ -157,12 +160,12 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
 
       <div style="margin-bottom: 20px; padding-top: 16px; border-top: 1px solid var(--vscode-panel-border);">
         <div style="font-size: 12px; color: var(--vscode-foreground); margin-bottom: 8px;">
-          💡 Tip: You can also do the following directly in the editor:
+          💡 ${l10n.html('Tip: You can also do the following directly in the editor:')}
         </div>
         <div style="font-size: 11px; color: var(--vscode-descriptionForeground); line-height: 1.6;">
-          • Copy & paste images (${navigator.platform.toLowerCase().includes('mac') ? 'Cmd' : 'Ctrl'}+V)<br>
-          • Drag & drop from Finder/File Explorer<br>
-          • Drag & drop from VS Code file explorer
+          • ${l10n.html('Copy & paste images ({0}+V)', pasteShortcutKey)}<br>
+          • ${l10n.html('Drag & drop from Finder/File Explorer')}<br>
+          • ${l10n.html('Drag & drop from VS Code file explorer')}
         </div>
       </div>
 
@@ -175,7 +178,7 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
           border-radius: 3px;
           cursor: pointer;
           font-family: var(--vscode-font-family);
-        ">Cancel</button>
+        ">${l10n.html('Cancel')}</button>
         <button id="insert-images" style="
           padding: 6px 14px;
           background: var(--vscode-button-background);
@@ -186,7 +189,7 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
           font-family: var(--vscode-font-family);
           font-weight: 500;
           display: none;
-        ">Insert Image<span id="insert-count"></span></button>
+        ">${l10n.html('Insert Image')}</button>
       </div>
     `;
 
@@ -230,7 +233,6 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
     const selectedFilesDiv = dialog.querySelector('#selected-files') as HTMLElement;
     const fileList = dialog.querySelector('#file-list') as HTMLElement;
     const fileCount = dialog.querySelector('#file-count') as HTMLElement;
-    const insertCount = dialog.querySelector('#insert-count') as HTMLElement;
 
     // Update selected files display
     const updateSelectedFiles = (files: File[]) => {
@@ -238,13 +240,19 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
       if (files.length > 0) {
         selectedFilesDiv.style.display = 'block';
         insertBtn.style.display = 'block';
-        fileCount.textContent = `${files.length} file${files.length > 1 ? 's' : ''}`;
-        insertCount.textContent = files.length > 1 ? `s (${files.length})` : '';
+        fileCount.textContent = l10n.t(files.length > 1 ? '{0} files' : '{0} file', files.length);
+        insertBtn.textContent =
+          files.length > 1 ? l10n.t('Insert Images ({0})', files.length) : l10n.t('Insert Image');
 
         fileList.replaceChildren(
           ...files.map((file, index) => {
             const row = document.createElement('div');
-            row.textContent = `${index + 1}. ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            row.textContent = l10n.t(
+              '{0}. {1} ({2} KB)',
+              index + 1,
+              file.name,
+              l10n.formatNumber(file.size / 1024, 1)
+            );
             return row;
           })
         );
@@ -265,7 +273,7 @@ export async function showImageInsertDialog(editor: Editor, vscodeApi: VsCodeApi
       if (closed || revision !== selectionRevision) return;
       if (imageFiles.length === 0) {
         // Show error for non-image files
-        alert('Please select image files only.');
+        alert(l10n.t('Please select image files only.'));
         return;
       }
 

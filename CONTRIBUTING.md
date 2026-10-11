@@ -338,6 +338,17 @@ git commit -m "fix: resolve cursor jump after image insert"
 
 ## How to Contribute
 
+### 🌍 Translate or Review a Language
+
+You do not need to write code to help here.
+
+- **Review a language you read natively.** Open the file for your language in [`l10n/`](./l10n) and tell us what reads wrong, in an issue or a pull request.
+- **Add a language.** Follow the steps in [`l10n/README.md`](./l10n/README.md): copy the English file, translate the values, open a pull request that changes only files in `l10n/`.
+- Automated checks make sure a translation cannot break the editor (placeholders kept, no markup, no stale entries). A second native reader, or a maintainer reading a back-translation, checks the meaning.
+- A language ships only when it is complete. Until then it stays in `l10n/drafts/` and users see English.
+
+Writing code? Every text a user can read must be translatable. See [`vibe-coding-rules/localization.md`](./vibe-coding-rules/localization.md).
+
 ### 🐛 Report Bugs
 
 1. Check [existing issues](https://github.com/concretios/markdown-for-humans/issues)

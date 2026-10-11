@@ -9258,6 +9258,160 @@ describe('MarkdownEditorProvider Feedback sessions', () => {
     });
   });
 
+  describe('localization', () => {
+    const translate = vscode.l10n.t as unknown as jest.Mock;
+    const english = translate.getMockImplementation();
+    const FRENCH: Record<string, string> = {
+      'Discard this Feedback draft?': 'Supprimer ce brouillon ?',
+      '{0} saved feedback item': '{0} commentaire enregistré',
+      '{0} saved feedback items': '{0} commentaires enregistrés',
+      'This draft contains {0}. Its bundle will be moved to Trash, and Feedback mode will end.':
+        'Ce brouillon contient {0}. Son dossier sera placé dans la corbeille.',
+      'Discard draft': 'Supprimer le brouillon',
+      'Could not move this Feedback draft to Trash. Delete it permanently?':
+        'Corbeille indisponible. Supprimer définitivement ?',
+      'Delete permanently': 'Supprimer définitivement',
+    };
+
+    beforeEach(() => {
+      translate.mockImplementation((message: string, ...args: unknown[]) =>
+        (FRENCH[message] ?? message).replace(/\{(\d+)\}/g, (placeholder, index: string) =>
+          args[Number(index)] === undefined ? placeholder : String(args[Number(index)])
+        )
+      );
+    });
+
+    afterEach(() => {
+      translate.mockImplementation(english);
+    });
+
+    it('discards a draft when the user picks the translated buttons', async () => {
+      const provider = createProvider(workspaceRoot);
+      const document = createDocument(sourcePath, SOURCE_TEXT);
+      const webview = createWebview(provider, document);
+      const started = await startAndAddTextFeedback(provider, document, webview);
+      const showWarningMessage = vscode.window.showWarningMessage as jest.Mock;
+      showWarningMessage.mockReset();
+      showWarningMessage
+        .mockResolvedValueOnce('Supprimer le brouillon')
+        .mockResolvedValueOnce('Supprimer définitivement');
+      const deleteFromWorkspace = jest.fn(
+        async (uri: vscode.Uri, options: { recursive: boolean; useTrash: boolean }) => {
+          if (options.useTrash) throw new Error('Trash is unavailable');
+          await rm(uri.fsPath, { recursive: true, force: true });
+        }
+      );
+      (vscode.workspace as unknown as { fs: { delete: typeof deleteFromWorkspace } }).fs = {
+        delete: deleteFromWorkspace,
+      };
+
+      internals(provider).handleWebviewMessage(
+        { type: 'feedback.discard', requestId: 'discard-french', sessionId: started.sessionId },
+        document as unknown as vscode.TextDocument,
+        webview as unknown as vscode.Webview
+      );
+
+      await waitForMessage(webview, 'feedback.discarded', 'discard-french');
+      expect(showWarningMessage.mock.calls).toEqual([
+        [
+          'Supprimer ce brouillon ?',
+          {
+            modal: true,
+            detail:
+              'Ce brouillon contient 1 commentaire enregistré. Son dossier sera placé dans la corbeille.',
+          },
+          'Supprimer le brouillon',
+        ],
+        [
+          'Corbeille indisponible. Supprimer définitivement ?',
+          expect.objectContaining({ modal: true }),
+          'Supprimer définitivement',
+        ],
+      ]);
+      expect(deleteFromWorkspace.mock.calls[1][1]).toEqual({ recursive: true, useTrash: false });
+    });
+
+    it('keeps the draft when the answer is the English label of a translated button', async () => {
+      const provider = createProvider(workspaceRoot);
+      const document = createDocument(sourcePath, SOURCE_TEXT);
+      const webview = createWebview(provider, document);
+      const started = await startAndAddTextFeedback(provider, document, webview);
+      const showWarningMessage = vscode.window.showWarningMessage as jest.Mock;
+      showWarningMessage.mockReset();
+      let announceAnswered!: () => void;
+      const answered = new Promise<void>(resolve => {
+        announceAnswered = resolve;
+      });
+      showWarningMessage.mockImplementationOnce(async () => {
+        announceAnswered();
+        return 'Discard draft';
+      });
+      const deleteFromWorkspace = jest.fn(async () => undefined);
+      (vscode.workspace as unknown as { fs: { delete: typeof deleteFromWorkspace } }).fs = {
+        delete: deleteFromWorkspace,
+      };
+
+      internals(provider).handleWebviewMessage(
+        { type: 'feedback.discard', requestId: 'discard-english', sessionId: started.sessionId },
+        document as unknown as vscode.TextDocument,
+        webview as unknown as vscode.Webview
+      );
+      await answered;
+      // Declining returns the session to active; discarding would retire it.
+      await waitUntil(
+        () => internals(provider).feedbackSessions.get(document.uri.toString())?.phase === 'active'
+      );
+
+      expect(deleteFromWorkspace).not.toHaveBeenCalled();
+      expect(messagesOfType(webview, 'feedback.discarded')).toHaveLength(0);
+    });
+
+    it('uses the plural message for more than one saved item', async () => {
+      const provider = createProvider(workspaceRoot);
+      const document = createDocument(sourcePath, SOURCE_TEXT);
+      const webview = createWebview(provider, document);
+      const started = await startAndAddTextFeedback(provider, document, webview);
+      internals(provider).handleWebviewMessage(
+        {
+          type: 'feedback.text.add',
+          requestId: 'add-second-text',
+          sessionId: started.sessionId,
+          startOrdinal: 1,
+          endOrdinal: 1,
+          focus: 'Paragraph.',
+          feedback: 'Add an example.',
+          renderedRange: PARAGRAPH_RENDERED_RANGE_INPUT,
+        },
+        document as unknown as vscode.TextDocument,
+        webview as unknown as vscode.Webview
+      );
+      await waitForMessage(webview, 'feedback.updated', 'add-second-text');
+      const showWarningMessage = vscode.window.showWarningMessage as jest.Mock;
+      showWarningMessage.mockReset();
+      showWarningMessage.mockResolvedValueOnce('Supprimer le brouillon');
+      (vscode.workspace as unknown as { fs: { delete: jest.Mock } }).fs = {
+        delete: jest.fn(async () => undefined),
+      };
+
+      internals(provider).handleWebviewMessage(
+        { type: 'feedback.discard', requestId: 'discard-plural', sessionId: started.sessionId },
+        document as unknown as vscode.TextDocument,
+        webview as unknown as vscode.Webview
+      );
+
+      await waitForMessage(webview, 'feedback.discarded', 'discard-plural');
+      expect(showWarningMessage).toHaveBeenCalledWith(
+        'Supprimer ce brouillon ?',
+        {
+          modal: true,
+          detail:
+            'Ce brouillon contient 2 commentaires enregistrés. Son dossier sera placé dans la corbeille.',
+        },
+        'Supprimer le brouillon'
+      );
+    });
+  });
+
   async function startAndAddTextFeedback(
     provider: MarkdownEditorProvider,
     document: ReturnType<typeof createDocument>,

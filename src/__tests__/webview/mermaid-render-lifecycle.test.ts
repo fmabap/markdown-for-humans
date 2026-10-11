@@ -4,6 +4,7 @@
 
 import mermaid from 'mermaid';
 import { Mermaid } from '../../webview/extensions/mermaid';
+import * as l10n from '../../webview/l10n';
 
 interface TestMermaidNode {
   textContent: string;
@@ -104,6 +105,65 @@ describe('Mermaid render lifecycle state', () => {
     expect(nodeView.dom.getAttribute('data-md4h-mermaid-state')).toBe('error');
     expect(nodeView.dom.getAttribute('data-md4h-mermaid-state')).not.toContain('private');
     expect(consoleError).toHaveBeenCalledTimes(1);
+    nodeView.destroy();
+  });
+});
+
+describe('Mermaid node view localization', () => {
+  const renderMock = mermaid.render as jest.MockedFunction<typeof mermaid.render>;
+  const sampleBundle: Record<string, string> = {
+    'Enter Mermaid diagram code': '输入 Mermaid 图表代码',
+    'Diagram Error: {0}': '图表错误：{0}',
+    'Double-click to edit': '双击编辑',
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    renderMock.mockReset();
+    document.body.innerHTML = '';
+    l10n.resetL10n();
+  });
+
+  it('shows English when no bundle is loaded', async () => {
+    const nodeView = createMermaidNodeView('');
+    document.body.append(nodeView.dom);
+    await flushMermaidRender();
+
+    expect(nodeView.dom.querySelector('.mermaid-placeholder')?.textContent).toBe(
+      'Enter Mermaid diagram code'
+    );
+    expect(nodeView.dom.querySelector('.mermaid-tooltip')?.textContent).toBe(
+      'Double-click to edit'
+    );
+    nodeView.destroy();
+  });
+
+  it('translates the empty placeholder and the tooltip', async () => {
+    l10n.configureL10n(sampleBundle);
+
+    const nodeView = createMermaidNodeView('');
+    document.body.append(nodeView.dom);
+    await flushMermaidRender();
+
+    expect(nodeView.dom.querySelector('.mermaid-placeholder')?.textContent).toBe(
+      '输入 Mermaid 图表代码'
+    );
+    expect(nodeView.dom.querySelector('.mermaid-tooltip')?.textContent).toBe('双击编辑');
+    nodeView.destroy();
+  });
+
+  it('translates the error prefix and keeps the parser message as written', async () => {
+    l10n.configureL10n(sampleBundle);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderMock.mockRejectedValue(new Error('Parse error on line 2'));
+
+    const nodeView = createMermaidNodeView('flowchart LR\nA--');
+    document.body.append(nodeView.dom);
+    await flushMermaidRender();
+
+    expect(nodeView.dom.querySelector('.mermaid-error')?.textContent).toBe(
+      '图表错误：Parse error on line 2'
+    );
     nodeView.destroy();
   });
 });

@@ -9,6 +9,7 @@ import type { Editor } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import { isSvgImageSource } from '../../shared/imageSource';
 import { imageDimension } from '../extensions/htmlImageSource';
+import * as l10n from '../l10n';
 
 let closeCurrent: (() => void) | null = null;
 
@@ -40,14 +41,16 @@ export function showSvgDisplaySize(
   form.className = 'svg-display-size';
   form.setAttribute('role', 'dialog');
   form.setAttribute('aria-modal', 'true');
-  form.setAttribute('aria-label', 'SVG display size');
+  form.setAttribute('aria-label', l10n.t('SVG display size'));
   form.noValidate = true;
   const heading = document.createElement('h2');
-  heading.textContent = 'Display size';
+  heading.textContent = l10n.t('Display size');
   const explanation = document.createElement('p');
-  explanation.textContent = 'Change this image in the document. The SVG file stays unchanged.';
+  explanation.textContent = l10n.t(
+    'Change this image in the document. The SVG file stays unchanged.'
+  );
   const label = document.createElement('label');
-  label.textContent = 'Width (px)';
+  label.textContent = l10n.t('Width (px)');
   const input = document.createElement('input');
   input.type = 'number';
   input.min = '1';
@@ -66,13 +69,13 @@ export function showSvgDisplaySize(
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.dataset.action = 'reset-size';
-  reset.textContent = 'Reset size';
+  reset.textContent = l10n.t('Reset size');
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.textContent = 'Cancel';
+  cancel.textContent = l10n.t('Cancel');
   const apply = document.createElement('button');
   apply.type = 'submit';
-  apply.textContent = 'Apply';
+  apply.textContent = l10n.t('Apply');
   actions.append(reset, cancel, apply);
   form.append(heading, explanation, label, error, actions);
   overlay.appendChild(form);
@@ -107,7 +110,7 @@ export function showSvgDisplaySize(
   };
   const applyWidth = (width: number | null) => {
     if (editor.isDestroyed || !editor.isEditable) {
-      error.textContent = 'The document is read-only.';
+      error.textContent = l10n.t('The document is read-only.');
       return;
     }
     const currentPosition = getPos();
@@ -115,7 +118,7 @@ export function showSvgDisplaySize(
       typeof currentPosition !== 'number' ||
       editor.state.doc.nodeAt(currentPosition) !== original
     ) {
-      error.textContent = 'The image changed. Close and reopen Display size.';
+      error.textContent = l10n.t('The image changed. Close and reopen Display size.');
       return;
     }
     const transaction = editor.state.tr.setNodeMarkup(currentPosition, undefined, {
@@ -128,8 +131,9 @@ export function showSvgDisplaySize(
     // Feedback owner/peer locks filter document transactions without changing
     // isEditable. Dispatch alone is not proof that the size was accepted.
     if (editor.state.doc === previousDocument) {
-      error.textContent =
-        'The document is read-only or locked. Close and reopen Display size after unlocking it.';
+      error.textContent = l10n.t(
+        'The document is read-only or locked. Close and reopen Display size after unlocking it.'
+      );
       return;
     }
     close();
@@ -138,7 +142,7 @@ export function showSvgDisplaySize(
     event.preventDefault();
     const width = Number(input.value);
     if (!input.value || !Number.isInteger(width) || width < 1 || width > 10000) {
-      error.textContent = 'Enter a whole-number width between 1 and 10000 pixels.';
+      error.textContent = l10n.t('Enter a whole-number width between 1 and 10000 pixels.');
       input.setAttribute('aria-invalid', 'true');
       return;
     }

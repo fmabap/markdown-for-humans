@@ -35,6 +35,7 @@ import {
   type FeedbackReviewController,
   type FeedbackSessionView,
 } from './feedbackReview';
+import * as l10n from '../l10n';
 
 export interface FeedbackCaptureWorkflowOptions {
   editor: Editor;
@@ -73,8 +74,8 @@ interface ActiveCaptureWorkflow {
 const fallbackDraftSurfaceGates = new WeakMap<object, FeedbackDraftSurfaceGate>();
 const captureChromeOwners = new Set<symbol>();
 let annotationAddSequence = 0;
-const AREA_CAPTURE_READY_INSTRUCTION =
-  'Capture area ready. Drag over the visible document area. Press Escape to cancel.';
+const areaCaptureReadyInstruction = (): string =>
+  l10n.t('Capture area ready. Drag over the visible document area. Press Escape to cancel.');
 
 function visibleEditorViewport(root: HTMLElement): CaptureRectangle | null {
   const bounds = root.getBoundingClientRect();
@@ -267,7 +268,7 @@ function isReviewWritable(review: FeedbackReviewController): boolean {
 function snapshotChangedError(): FeedbackCaptureError {
   return new FeedbackCaptureError(
     'MD4H-FB-SNAPSHOT-001',
-    'The Markdown source changed. Start a new Feedback snapshot before capturing.'
+    l10n.t('The Markdown source changed. Start a new Feedback snapshot before capturing.')
   );
 }
 
@@ -376,7 +377,7 @@ async function captureRectangle(
   const root = options.editor.view.dom as HTMLElement;
   const viewport = visibleEditorViewport(root);
   if (!session || !viewport) {
-    throw new Error('The frozen editor is not visible for capture.');
+    throw new Error(l10n.t('The frozen editor is not visible for capture.'));
   }
   if (!isReviewWritable(options.review)) throw snapshotChangedError();
   return captureVisibleArea({
@@ -397,7 +398,9 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
   const root = options.editor.view.dom as HTMLElement;
   const initialViewport = visibleEditorViewport(root);
   if (!session || !initialViewport) {
-    showCaptureError('Start Feedback and keep the rendered document visible before capturing.');
+    showCaptureError(
+      l10n.t('Start Feedback and keep the rendered document visible before capturing.')
+    );
     return;
   }
   let viewport: CaptureRectangle = initialViewport;
@@ -427,14 +430,14 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
   overlay.className = 'feedback-area-capture';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', 'Capture area for feedback');
+  overlay.setAttribute('aria-label', l10n.t('Capture area for feedback'));
   overlay.setAttribute('data-md4h-modal', '');
   overlay.setAttribute('aria-busy', 'false');
   overlay.tabIndex = 0;
   const instruction = document.createElement('div');
   instruction.className = 'feedback-capture-instruction';
   instruction.id = 'feedback-area-capture-instruction';
-  instruction.textContent = AREA_CAPTURE_READY_INSTRUCTION;
+  instruction.textContent = areaCaptureReadyInstruction();
   overlay.setAttribute('aria-describedby', instruction.id);
   const selection = document.createElement('div');
   selection.className = 'feedback-capture-selection';
@@ -444,12 +447,12 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
   error.setAttribute('role', 'status');
   const retry = document.createElement('button');
   retry.type = 'button';
-  retry.textContent = 'Retry';
+  retry.textContent = l10n.t('Retry');
   retry.hidden = true;
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.className = 'feedback-capture-cancel';
-  cancel.textContent = 'Cancel';
+  cancel.textContent = l10n.t('Cancel');
   overlay.append(instruction, selection, error, retry, cancel);
   let start: CapturePoint | null = null;
   let end: CapturePoint | null = null;
@@ -577,7 +580,7 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
     if (closed) return;
     const measured = visibleEditorViewport(root);
     if (!measured) {
-      showCaptureError('The rendered document is no longer visible for capture.');
+      showCaptureError(l10n.t('The rendered document is no longer visible for capture.'));
       cancelCapture();
       return;
     }
@@ -610,7 +613,9 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
       // Retry has no crop left to replay, so only a new drag can recover.
       if (document.activeElement === retry) overlay.focus();
       retry.hidden = true;
-      error.textContent = 'The viewport changed. Drag again using the current visible area.';
+      error.textContent = l10n.t(
+        'The viewport changed. Drag again using the current visible area.'
+      );
     }
   };
   const handleCaptureKeyDown = (event: KeyboardEvent): void => {
@@ -687,7 +692,7 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
     updateCaptureWorkflowSurface(workflow);
     overlay.classList.remove('rasterizing');
     overlay.setAttribute('aria-busy', 'false');
-    instruction.textContent = AREA_CAPTURE_READY_INSTRUCTION;
+    instruction.textContent = areaCaptureReadyInstruction();
     document.body.setAttribute('data-feedback-capture-state', 'armed');
     options.review.setCaptureState?.('armed');
   };
@@ -722,7 +727,7 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
     error.textContent = '';
     overlay.classList.add('rasterizing');
     overlay.setAttribute('aria-busy', 'true');
-    instruction.textContent = 'Preparing capture…';
+    instruction.textContent = l10n.t('Preparing capture…');
     document.body.setAttribute('data-feedback-capture-state', 'rasterizing');
     options.review.setCaptureState?.('rasterizing');
     try {
@@ -764,7 +769,7 @@ export function startFeedbackAreaCapture(options: FeedbackCaptureWorkflowOptions
       const message =
         captureError instanceof Error
           ? captureError.message
-          : 'The selected area could not be captured.';
+          : l10n.t('The selected area could not be captured.');
       error.textContent = message;
       retry.hidden = false;
     } finally {
@@ -861,7 +866,7 @@ function prepareBlockCaptureRectangle(
   if (!session || !viewport) {
     throw new FeedbackCaptureError(
       'MD4H-FB-ANCHOR-001',
-      'The selected Markdown blocks are not visible for capture.'
+      l10n.t('The selected Markdown blocks are not visible for capture.')
     );
   }
   if (!isReviewWritable(options.review)) throw snapshotChangedError();
@@ -879,7 +884,7 @@ function prepareBlockCaptureRectangle(
   ) {
     throw new FeedbackCaptureError(
       'MD4H-FB-ANCHOR-001',
-      'The selected Markdown blocks are not rendered.'
+      l10n.t('The selected Markdown blocks are not rendered.')
     );
   }
   // Resolve ordinals against non-widget direct children rather than raw
@@ -891,14 +896,16 @@ function prepareBlockCaptureRectangle(
     if (!(element instanceof HTMLElement)) {
       throw new FeedbackCaptureError(
         'MD4H-FB-ANCHOR-001',
-        'The selected Markdown blocks are not rendered.'
+        l10n.t('The selected Markdown blocks are not rendered.')
       );
     }
     const rectangle = element.getBoundingClientRect();
     if (!rectangleIsFullyVisible(rectangle, viewport)) {
       throw new FeedbackCaptureError(
         'MD4H-FB-ANCHOR-001',
-        'The selected blocks are not fully visible. Scroll until the entire range is visible, then retry.'
+        l10n.t(
+          'The selected blocks are not fully visible. Scroll until the entire range is visible, then retry.'
+        )
       );
     }
     rectangles.push(rectangle);
@@ -906,7 +913,7 @@ function prepareBlockCaptureRectangle(
   if (rectangles.length === 0) {
     throw new FeedbackCaptureError(
       'MD4H-FB-ANCHOR-001',
-      'The selected Markdown blocks are not rendered.'
+      l10n.t('The selected Markdown blocks are not rendered.')
     );
   }
   return {
@@ -1003,7 +1010,7 @@ async function captureBlockRange(
     const handleViewportShift = (): void => {
       if (aborted || guardedElement === null || guardedTop === null) return;
       if (Math.abs(guardedElement.getBoundingClientRect().top - guardedTop) > 0.5) {
-        showCaptureError('The document scrolled during capture. Select the blocks again.');
+        showCaptureError(l10n.t('The document scrolled during capture. Select the blocks again.'));
         abortCapture();
       }
     };
@@ -1036,7 +1043,7 @@ async function captureBlockRange(
 function openKeyboardBlockSelector(options: FeedbackCaptureWorkflowOptions): void {
   const session = options.review.getSession();
   if (!session?.anchors?.length) {
-    showCaptureError('No mappable Markdown blocks are available to capture.');
+    showCaptureError(l10n.t('No mappable Markdown blocks are available to capture.'));
     return;
   }
   if (!isReviewWritable(options.review)) {
@@ -1050,28 +1057,33 @@ function openKeyboardBlockSelector(options: FeedbackCaptureWorkflowOptions): voi
   dialog.setAttribute('data-md4h-modal', '');
   const title = document.createElement('h2');
   title.id = 'feedback-block-selector-title';
-  title.textContent = 'Capture block range';
+  title.textContent = l10n.t('Capture block range');
   dialog.setAttribute('aria-labelledby', title.id);
   const start = document.createElement('select');
   const end = document.createElement('select');
   const startLabel = document.createElement('label');
-  startLabel.textContent = 'First block';
+  startLabel.textContent = l10n.t('First block');
   startLabel.append(start);
   const endLabel = document.createElement('label');
-  endLabel.textContent = 'Last block';
+  endLabel.textContent = l10n.t('Last block');
   endLabel.append(end);
   for (const anchor of session.anchors) {
-    const label = `Block ${anchor.ordinal + 1}, lines ${anchor.startLine}-${anchor.endLine}`;
+    const label = l10n.t(
+      'Block {0}, lines {1}-{2}',
+      anchor.ordinal + 1,
+      anchor.startLine,
+      anchor.endLine
+    );
     start.add(new Option(label, String(anchor.ordinal)));
     end.add(new Option(label, String(anchor.ordinal)));
   }
   end.selectedIndex = end.options.length - 1;
   const submit = document.createElement('button');
   submit.type = 'submit';
-  submit.textContent = 'Capture blocks';
+  submit.textContent = l10n.t('Capture blocks');
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.textContent = 'Cancel';
+  cancel.textContent = l10n.t('Cancel');
   const validation = document.createElement('p');
   validation.id = 'feedback-block-selector-error';
   validation.className = 'feedback-annotation-validation';
@@ -1136,7 +1148,7 @@ function openKeyboardBlockSelector(options: FeedbackCaptureWorkflowOptions): voi
     } catch (error) {
       reportCaptureError(options.review, error);
       validation.textContent =
-        error instanceof Error ? error.message : 'Could not capture those blocks.';
+        error instanceof Error ? error.message : l10n.t('Could not capture those blocks.');
       start.setAttribute('aria-invalid', 'true');
       end.setAttribute('aria-invalid', 'true');
       return;
@@ -1147,7 +1159,7 @@ function openKeyboardBlockSelector(options: FeedbackCaptureWorkflowOptions): voi
       error => {
         reportCaptureError(options.review, error);
         showCaptureError(
-          error instanceof Error ? error.message : 'Could not capture those blocks.'
+          error instanceof Error ? error.message : l10n.t('Could not capture those blocks.')
         );
       }
     );
@@ -1175,7 +1187,9 @@ export function captureSelectedFeedbackBlocks(options: FeedbackCaptureWorkflowOp
   void captureBlockRange(options, target.startOrdinal, target.endOrdinal, returnFocus).catch(
     error => {
       reportCaptureError(options.review, error);
-      showCaptureError(error instanceof Error ? error.message : 'Could not capture the selection.');
+      showCaptureError(
+        error instanceof Error ? error.message : l10n.t('Could not capture the selection.')
+      );
     }
   );
 }

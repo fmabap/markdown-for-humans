@@ -4,8 +4,6 @@
  * Licensed under the MIT License. See LICENSE file in the project root for details.
  */
 
-import { readFileSync } from 'fs';
-import * as path from 'path';
 import {
   DEFAULT_FEEDBACK_HANDOFF_PROMPT_TEMPLATE,
   FEEDBACK_HANDOFF_PROMPT_TEMPLATE_SETTING,
@@ -15,6 +13,7 @@ import {
   renderFeedbackHandoffPrompt,
   type FeedbackHandoffPromptValues,
 } from '../../editor/feedbackHandoffPrompt';
+import { readResolvedManifest } from '../l10n/resolvedManifest';
 
 const VALUES: FeedbackHandoffPromptValues = {
   feedbackFile: '.md4h/feedback/docs/guide.md--round/feedback.md',
@@ -173,9 +172,7 @@ describe('formatMarkdownInlineCode', () => {
 
 describe('feedback handoff prompt setting', () => {
   it('contributes the built-in template at resource scope and documents every placeholder', () => {
-    const packageJson = JSON.parse(
-      readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8')
-    ) as {
+    const packageJson = readResolvedManifest<{
       contributes: {
         configuration: {
           properties: Record<
@@ -191,7 +188,7 @@ describe('feedback handoff prompt setting', () => {
           >;
         };
       };
-    };
+    }>();
     const setting =
       packageJson.contributes.configuration.properties[FEEDBACK_HANDOFF_PROMPT_TEMPLATE_SETTING];
 

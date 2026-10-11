@@ -55,6 +55,14 @@
 - **Use `git mv`** for renaming/moving tracked files (preserves history)
 - **Pre-commit hook** — Automatically runs `npm run lint:fix` before each commit (see `.github/hooks/pre-commit`)
 
+### 6. Localization (VS Code standard)
+- **Every text a user can read is translatable.** No hardcoded UI strings.
+- Host: `vscode.l10n.t('English text {0}', value)`. Webview: `l10n.t(...)` from `src/webview/l10n.ts`, or `l10n.html(...)` inside HTML templates. Manifest: `%key%` with English in `package.nls.json`.
+- The message is one whole sentence as a string literal. No concatenation, no template variables, no plural suffixes.
+- Logs, error detail, command IDs, the Feedback bundle and handoff prompt, `displayName` and `description` stay English.
+- After adding or changing text run `npm run l10n:extract`. CI fails on missed extraction and on new hardcoded UI text.
+- See: [vibe-coding-rules/localization.md](vibe-coding-rules/localization.md)
+
 ---
 
 ## Key Technical Decisions
@@ -80,6 +88,7 @@
 | [styling.md](vibe-coding-rules/styling.md) | CSS, visual feedback, theme-aware styling, Apple-like polish | For CSS/styling changes |
 | [coding-standards.md](vibe-coding-rules/coding-standards.md) | TypeScript style, code documentation, file organization | For all code changes |
 | [image-and-dom-handling.md](vibe-coding-rules/image-and-dom-handling.md) | Images, Enter key, NodeViews, Markdown serialization | For image/DOM changes |
+| [localization.md](vibe-coding-rules/localization.md) | Any UI text: labels, tooltips, messages, manifest strings | For any change that adds or edits UI text |
 | [performance.md](vibe-coding-rules/performance.md) | Bundle size, startup, memory optimization | Reference if concerns arise |
 
 **Usage:** Proactively load guides when starting relevant work. The guides contain detailed patterns and examples.
@@ -130,6 +139,7 @@
 - [ ] **Logic review** - No obvious bugs or uncovered edge cases
 - [ ] **Documentation** - JSDoc updated, file headers current, inline WHY comments
 - [ ] **Markdown docs** - Check update triggers table, verify file references (grep `src/` paths)
+- [ ] **Localization** - New or changed UI text uses `vscode.l10n.t` / `l10n.t` / `%key%`; `npm run l10n:extract` was run
 - [ ] **Third-party licenses** - If added/removed dependencies, update `THIRD_PARTY_LICENSES.md` with license info
 - [ ] **Test coverage** - Positive, negative, edge cases all covered
 - [ ] **Clean code** - Use `console.log()` for development (removed in production), `console.error()` for errors (always kept), no debugging code or commented-out blocks
@@ -175,6 +185,7 @@ See: [vibe-coding-rules/common-pitfalls.md](vibe-coding-rules/common-pitfalls.md
 | Add toolbar button | `src/webview/BubbleMenuView.ts` |
 | Add TipTap extension | `src/webview/extensions/` |
 | Update document sync | `src/editor/MarkdownEditorProvider.ts` |
+| Add or change UI text | `vibe-coding-rules/localization.md`, then `npm run l10n:extract` |
 
 ---
 
@@ -192,6 +203,7 @@ See: [vibe-coding-rules/common-pitfalls.md](vibe-coding-rules/common-pitfalls.md
 | Ship new feature | `roadmap/shipped/` | Move plan from pipeline to shipped when complete |
 | Change styling patterns | `vibe-coding-rules/styling.md` | Verify examples match current CSS |
 | Change testing approach | `vibe-coding-rules/testing.md` | Verify patterns match current tests |
+| Add or change UI text | `l10n/bundle.l10n.json`, `package.nls.json` | Run `npm run l10n:extract`; never hand-edit the English bundle |
 | Change image/DOM handling | `vibe-coding-rules/image-and-dom-handling.md` | Verify patterns match code |
 
 ---
