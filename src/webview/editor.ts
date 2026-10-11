@@ -215,6 +215,9 @@ let isUpdating = false; // Prevent feedback loops
 let formattingToolbar: HTMLElement;
 let tableMenu: HTMLElement;
 let textMenu: HTMLElement;
+// Pushed by the host (ready + extension changes): the Copilot menu entry is
+// hidden in tools without GitHub Copilot (e.g. Cursor, VSCodium).
+let copilotChatAvailable = false;
 let documentSyncController: DocumentSyncController | null = null;
 let lastUserEditTime = 0; // Track when user last edited
 let pendingInitialContent: string | null = null; // Content from host before editor is ready
@@ -1276,14 +1279,21 @@ function initializeEditor(initialContent: string) {
 
         e.preventDefault();
         tableMenu.style.display = 'none';
-        showTextContextMenu(textMenu, e.clientX, e.clientY, hasEditorSelection(editorInstance), {
-          cut: withEditorFocus(editorInstance, () => runClipboardAction(editorInstance, 'cut')),
-          copy: withEditorFocus(editorInstance, () => runClipboardAction(editorInstance, 'copy')),
-          paste: withEditorFocus(editorInstance, () => runPasteAction()),
-          addToCopilot: withEditorFocus(editorInstance, () =>
-            requestAddSelectionToCopilot(editorInstance)
-          ),
-        });
+        showTextContextMenu(
+          textMenu,
+          e.clientX,
+          e.clientY,
+          hasEditorSelection(editorInstance),
+          {
+            cut: withEditorFocus(editorInstance, () => runClipboardAction(editorInstance, 'cut')),
+            copy: withEditorFocus(editorInstance, () => runClipboardAction(editorInstance, 'copy')),
+            paste: withEditorFocus(editorInstance, () => runPasteAction()),
+            addToCopilot: withEditorFocus(editorInstance, () =>
+              requestAddSelectionToCopilot(editorInstance)
+            ),
+          },
+          { copilotAvailable: copilotChatAvailable }
+        );
       } catch (error) {
         console.error('[MD4H] Error in context menu:', error);
       }
@@ -2332,6 +2342,12 @@ window.addEventListener('message', async (event: MessageEvent) => {
         if (text.length > 0 && editor && !isFeedbackEditingLocked()) {
           insertClipboardTextForContextMenu(editor, text);
         }
+        break;
+      }
+      case 'copilotChatAvailability': {
+        // Whether GitHub Copilot exists in this tool; gates the context menu's
+        // Copilot entry so tools without it never show (or fail) the action.
+        copilotChatAvailable = message.available === true;
         break;
       }
       default:

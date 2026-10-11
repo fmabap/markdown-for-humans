@@ -226,6 +226,12 @@
 - **Files:** `src/webview/features/textContextMenu.ts`, `src/webview/editor.ts`, `src/webview/editor.css`, `src/__tests__/webview/textContextMenu.test.ts`, `CHANGELOG.md`, `wiki/User-Guide.md`, deleted `roadmap/pipeline/task-add-selection-to-copilot.md`.
 - **Notes:** Keyboard Ctrl+A remains standard editor behavior; only the menu entry is gone.
 
+### 2026-10-11 – Copilot availability gating (follow-up)
+
+- **What:** The Copilot menu entry must only appear where GitHub Copilot actually exists (Cursor/Windsurf/VSCodium may lack it), with no error when absent. The host now reports `copilotChatAvailability` to each renderer (on `ready` and on `vscode.extensions.onDidChange`, broadcast via the registered webview set) based on `github.copilot-chat` extension presence AND the `workbench.action.chat.open` command. The menu item is hidden unless that flag is set (default hidden, so a lost message degrades to hidden, never to a broken entry). The clipboard fallback now notifies only when Copilot exists but the document cannot attach (e.g. unsaved); without Copilot it stays silent.
+- **Files:** `src/editor/MarkdownEditorProvider.ts` (`isCopilotChatAvailable`, `postCopilotChatAvailability`, `broadcastCopilotChatAvailability`, silent fallback), `src/webview/editor.ts` (`copilotChatAvailability` message + menu options), `src/webview/features/textContextMenu.ts` (`showTextContextMenu` options, `textContextMenuItemSpecs(hasSelection, copilotAvailable)`), `src/__tests__/webview/textContextMenu.test.ts` (+1 test), `CHANGELOG.md`, `wiki/User-Guide.md`, `wiki/FAQ.md`.
+- **Notes:** Availability = Copilot Chat extension present AND chat command registered; both signals are needed because VS Code forks keep the chat command even without GitHub Copilot.
+
 ## 8. Decisions & Tradeoffs
 
 - **Custom HTML menu** (user choice) over the native `webview/context` contribution point. Tradeoff: must reimplement Cut/Copy/Paste/Select All to avoid a UX regression; Paste goes through a host clipboard round-trip because webview clipboard reads are unreliable.

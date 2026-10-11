@@ -137,17 +137,20 @@ export function createTextContextMenu(): HTMLElement {
  * @param clientY - Pointer Y in viewport coordinates
  * @param hasSelection - Whether the editor currently has a non-empty selection
  * @param handlers - Callbacks for each menu action
+ * @param options - Menu context; `copilotAvailable` gates the Copilot action so
+ *                  tools without GitHub Copilot never show it
  */
 export function showTextContextMenu(
   menu: HTMLElement,
   clientX: number,
   clientY: number,
   hasSelection: boolean,
-  handlers: TextContextMenuHandlers
+  handlers: TextContextMenuHandlers,
+  options?: { copilotAvailable?: boolean }
 ): void {
   hideTextContextMenu(menu);
 
-  const items = textContextMenuItemSpecs(hasSelection);
+  const items = textContextMenuItemSpecs(hasSelection, options?.copilotAvailable === true);
   renderItems(menu, items, handlers);
 
   menu.style.display = 'block';
@@ -173,8 +176,18 @@ export function hideTextContextMenu(menu: HTMLElement): void {
   }
 }
 
-/** The menu's item layout, exported so tests can verify labels and icons. */
-export function textContextMenuItemSpecs(hasSelection: boolean): TextContextMenuItemSpec[] {
+/**
+ * The menu's item layout, exported so tests can verify labels and icons.
+ *
+ * @param hasSelection - Whether the editor currently has a non-empty selection
+ * @param copilotAvailable - Whether GitHub Copilot Chat is available here; the
+ *                           Copilot action is hidden entirely otherwise (some
+ *                           VS Code forks ship no GitHub Copilot)
+ */
+export function textContextMenuItemSpecs(
+  hasSelection: boolean,
+  copilotAvailable = false
+): TextContextMenuItemSpec[] {
   return [
     {
       action: 'cut',
@@ -201,8 +214,8 @@ export function textContextMenuItemSpecs(hasSelection: boolean): TextContextMenu
       action: 'addToCopilot',
       label: 'Add Selection to GitHub Copilot',
       iconClass: 'codicon-copilot',
-      visible: hasSelection,
-      enabled: hasSelection,
+      visible: hasSelection && copilotAvailable,
+      enabled: hasSelection && copilotAvailable,
       separatorBefore: true,
     },
   ];

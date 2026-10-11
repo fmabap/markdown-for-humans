@@ -43,13 +43,31 @@ describe('textContextMenu', () => {
     it('shows the Copilot action only when there is a selection', () => {
         const menu = createTextContextMenu();
 
-        showTextContextMenu(menu, 10, 10, true, createHandlers());
+        showTextContextMenu(menu, 10, 10, true, createHandlers(), { copilotAvailable: true });
         expect(itemLabels(menu)).toContain('Add Selection to GitHub Copilot');
         hideTextContextMenu(menu);
 
-        showTextContextMenu(menu, 10, 10, false, createHandlers());
+        showTextContextMenu(menu, 10, 10, false, createHandlers(), { copilotAvailable: true });
         expect(itemLabels(menu)).not.toContain('Add Selection to GitHub Copilot');
         expect(itemLabels(menu)).toContain('Paste');
+    });
+
+    it('hides the Copilot action when GitHub Copilot is unavailable', () => {
+        const menu = createTextContextMenu();
+
+        showTextContextMenu(menu, 10, 10, true, createHandlers(), { copilotAvailable: false });
+
+        // Tools without GitHub Copilot (e.g. some VS Code forks) must not show
+        // the action at all — and must not surface any error either.
+        expect(itemLabels(menu)).not.toContain('Add Selection to GitHub Copilot');
+        expect(itemLabels(menu)).toContain('Cut');
+        expect(itemLabels(menu)).toContain('Paste');
+        hideTextContextMenu(menu);
+
+        const copilotSpec = textContextMenuItemSpecs(true, false).find(
+            item => item.action === 'addToCopilot'
+        );
+        expect(copilotSpec?.visible).toBe(false);
     });
 
     it('hides Cut and Copy when there is no selection', () => {
@@ -64,7 +82,7 @@ describe('textContextMenu', () => {
         const menu = createTextContextMenu();
         const handlers = createHandlers();
 
-        showTextContextMenu(menu, 10, 10, true, handlers);
+        showTextContextMenu(menu, 10, 10, true, handlers, { copilotAvailable: true });
         const copilotItem = menu.querySelector('[data-action="addToCopilot"]') as HTMLElement;
         copilotItem.click();
 
@@ -148,7 +166,7 @@ describe('menu icons', () => {
         const defined = new Set(
             Array.from(css.matchAll(/\.(codicon-[a-z0-9-]+):before/g), match => match[1])
         );
-        const referenced = textContextMenuItemSpecs(true)
+        const referenced = textContextMenuItemSpecs(true, true)
             .map(item => item.iconClass)
             .filter((iconClass): iconClass is string => typeof iconClass === 'string');
 

@@ -890,8 +890,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
         supportsMultipleEditorsPerDocument: true,
       }
     );
+    // Keep the context menu's Copilot entry in sync when GitHub Copilot is
+    // installed, uninstalled, enabled, or disabled mid-session.
+    const extensionChangeListener = vscode.extensions.onDidChange(() => {
+      void provider.broadcastCopilotChatAvailability();
+    });
     return {
       dispose: () => {
+        extensionChangeListener.dispose();
         providerRegistration.dispose();
         provider.dispose();
       },
@@ -1936,6 +1942,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
           blankLineMode,
           enableMath: enableMath,
         });
+        void this.postCopilotChatAvailability(webview);
         break;
       }
       case 'outlineUpdated': {
@@ -9366,12 +9373,13 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
         console.warn(`[MD4H] Copilot selection mapping failed closed: ${resolved.error.detail}`);
       }
 
+      const chatAvailable = await isCopilotChatAvailable();
       const plan = buildCopilotChatPlan({
         documentUri: document.uri.toString(),
         documentText,
         selectionText,
         lineRange,
-        chatCommandAvailable: await isCopilotChatCommandAvailable(),
+        chatCommandAvailable: chatAvailable,
         documentScheme: document.uri.scheme,
       });
 
@@ -9402,9 +9410,15 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
           selectionText,
         })
       );
-      vscode.window.showInformationMessage(
-        'Copilot Chat is unavailable, so the selection was copied to the clipboard with its source location.'
-      );
+      if (chatAvailable) {
+        // Copilot is present but the document cannot be attached (for example
+        // it is unsaved): tell the user where the context went. When the tool
+        // has no GitHub Copilot at all, the menu entry is hidden and this stays
+        // silent by design.
+        vscode.window.showInformationMessage(
+          'The document cannot be attached to GitHub Copilot Chat, so the selection was copied to the clipboard with its source location.'
+        );
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[MD4H] Failed to add selection to GitHub Copilot: ${errorMessage}`);
@@ -9425,6 +9439,28 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[MD4H] Failed to read clipboard: ${errorMessage}`);
       vscode.window.showErrorMessage(`Failed to read clipboard: ${errorMessage}`);
+    }
+  }
+
+  /** Tell one renderer whether the Copilot action belongs in its context menu. */
+  private async postCopilotChatAvailability(webview: vscode.Webview): Promise<void> {
+    try {
+      await webview.postMessage({
+        type: 'copilotChatAvailability',
+        available: await isCopilotChatAvailable(),
+      });
+    } catch (error) {
+      console.warn('[MD4H] Could not report GitHub Copilot availability:', error);
+    }
+  }
+
+  /** Refresh the availability flag in every live renderer (extensions change). */
+  private async broadcastCopilotChatAvailability(): Promise<void> {
+    const available = await isCopilotChatAvailable();
+    for (const webviews of this.feedbackWebviews.values()) {
+      for (const webview of webviews) {
+        void webview.postMessage({ type: 'copilotChatAvailability', available });
+      }
     }
   }
 
@@ -11858,6 +11894,23 @@ async function isCopilotChatCommandAvailable(): Promise<boolean> {
     console.warn('[MD4H] Could not enumerate commands for Copilot Chat:', error);
     return false;
   }
+}
+
+/** Extension that provides the GitHub Copilot Chat participants. */
+const COPILOT_CHAT_EXTENSION_ID = 'github.copilot-chat';
+
+/**
+ * Whether GitHub Copilot is installed in this tool. Editors built on VS Code
+ * (Cursor, Windsurf, VSCodium, ...) can ship without it, so the presence of the
+ * chat command alone is not enough evidence for "GitHub Copilot is available".
+ */
+function isCopilotChatExtensionPresent(): boolean {
+  return vscode.extensions.getExtension(COPILOT_CHAT_EXTENSION_ID) !== undefined;
+}
+
+/** Whether "Add Selection to GitHub Copilot" can hand off to GitHub Copilot. */
+async function isCopilotChatAvailable(): Promise<boolean> {
+  return isCopilotChatExtensionPresent() && (await isCopilotChatCommandAvailable());
 }
 
 /** Workspace-relative path when available, otherwise the URI's file name. */
