@@ -7577,14 +7577,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
           'MD4H-FB-STORE-002',
           transferCompletion === 'rolled-back'
             ? vscode.l10n.t({
-                message:
-                  'The Feedback handoff was cancelled because the source changed during transfer.',
-                comment:
-                  'Here "handoff" is the Feedback session moving to another editor view, not the prompt for an AI agent.',
-              })
+              message:
+                'The Feedback handoff was cancelled because the source changed during transfer.',
+              comment:
+                'Here "handoff" is the Feedback session moving to another editor view, not the prompt for an AI agent.',
+            })
             : vscode.l10n.t(
-                'The target rich editor was unavailable. Feedback remains reserved in its previous view.'
-              )
+              'The target rich editor was unavailable. Feedback remains reserved in its previous view.'
+            )
         );
       }
       return true;
@@ -7721,14 +7721,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       message:
         remaining > 0
           ? vscode.l10n.t(
-              'Exact highlighting could not be restored for {0} and {1} more. Their source-line anchors are preserved and block markers are shown.',
-              visibleIds,
-              remaining
-            )
+            'Exact highlighting could not be restored for {0} and {1} more. Their source-line anchors are preserved and block markers are shown.',
+            visibleIds,
+            remaining
+          )
           : vscode.l10n.t(
-              'Exact highlighting could not be restored for {0}. Their source-line anchors are preserved and block markers are shown.',
-              visibleIds
-            ),
+            'Exact highlighting could not be restored for {0}. Their source-line anchors are preserved and block markers are shown.',
+            visibleIds
+          ),
       recoverable: true,
     });
   }

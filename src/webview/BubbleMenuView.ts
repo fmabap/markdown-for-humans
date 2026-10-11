@@ -1420,37 +1420,37 @@ export function createTableMenu(
       marker?: string;
     }
   > = [
-    {
-      label: l10n.t('Add Row Before'),
-      action: () => editor.chain().focus().addRowBefore().run(),
-    },
-    {
-      label: l10n.t('Add Row After'),
-      action: () => editor.chain().focus().addRowAfter().run(),
-    },
-    {
-      label: l10n.t('Delete Row'),
-      action: () => editor.chain().focus().deleteRow().run(),
-    },
-    { separator: true },
-    {
-      label: l10n.t('Add Column Before'),
-      action: () => editor.chain().focus().addColumnBefore().run(),
-    },
-    {
-      label: l10n.t('Add Column After'),
-      action: () => editor.chain().focus().addColumnAfter().run(),
-    },
-    {
-      label: l10n.t('Delete Column'),
-      action: () => editor.chain().focus().deleteColumn().run(),
-    },
-    { separator: true },
-    {
-      label: l10n.t('Delete Table'),
-      action: () => editor.chain().focus().deleteTable().run(),
-    },
-  ];
+      {
+        label: l10n.t('Add Row Before'),
+        action: () => editor.chain().focus().addRowBefore().run(),
+      },
+      {
+        label: l10n.t('Add Row After'),
+        action: () => editor.chain().focus().addRowAfter().run(),
+      },
+      {
+        label: l10n.t('Delete Row'),
+        action: () => editor.chain().focus().deleteRow().run(),
+      },
+      { separator: true },
+      {
+        label: l10n.t('Add Column Before'),
+        action: () => editor.chain().focus().addColumnBefore().run(),
+      },
+      {
+        label: l10n.t('Add Column After'),
+        action: () => editor.chain().focus().addColumnAfter().run(),
+      },
+      {
+        label: l10n.t('Delete Column'),
+        action: () => editor.chain().focus().deleteColumn().run(),
+      },
+      { separator: true },
+      {
+        label: l10n.t('Delete Table'),
+        action: () => editor.chain().focus().deleteTable().run(),
+      },
+    ];
 
   if (options?.onAddToCopilot) {
     items.push(
