@@ -2599,7 +2599,7 @@
     margin: 4px 0;
   }
 
-  /* Editor-body context menu (Cut/Copy/Paste/Select All + Copilot).
+  /* Editor-body context menu (Cut/Copy/Paste + Copilot).
      Fixed positioning: it is placed at the pointer in viewport coordinates,
      unlike the image menu which anchors to its button. */
   .text-context-menu {
@@ -2646,6 +2646,17 @@
   .text-context-menu .menu-icon {
     font-size: 14px;
     opacity: 0.8;
+  }
+
+  /* Inline SVG icons (e.g. Cut's scissors) use no icon font. */
+  .text-context-menu .menu-icon-svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0.8;
+    color: inherit;
   }
 
   .text-context-menu .menu-label {

@@ -43,7 +43,7 @@
 
 **In scope:**
 
-- Custom HTML context menu in the webview (Cut / Copy / Paste / Select All + separator + Copilot item)
+- Custom HTML context menu in the webview (Cut / Copy / Paste + separator + Copilot item)
 - Selection → top-level block ordinals → exact source line range mapping
 - Host action attaching file + line range to GitHub Copilot Chat
 - Clipboard fallback + user messaging
@@ -106,7 +106,7 @@
 - `src/editor/copilotSelectionRange.ts` – **New.** Pure resolver: canonical blocks + raw markdown + ordinal range → `{startLine, endLine}`; plus `toChatAttachRange()` producing the 1-based internal `IRange` required by `attachFiles`.
 - `src/editor/copilotChatAttach.ts` – **New.** Pure decision logic: mapping result + chat availability → action (`attach-with-range` / `attach-whole-file` / `clipboard`), plus clipboard text rendering.
 - `src/editor/MarkdownEditorProvider.ts` – New `addSelectionToCopilot` message case + host handler; reuses `flushRendererAtDocumentBoundary` before reading `document.getText()`.
-- `src/webview/features/textContextMenu.ts` – **New.** Custom context menu (Cut/Copy/Paste/Select All + Copilot item), modeled on `imageMenu.ts`.
+- `src/webview/features/textContextMenu.ts` – **New.** Custom context menu (Cut/Copy/Paste + Copilot item), modeled on `imageMenu.ts`.
 - `src/webview/editor.ts` – Right-click interception + message bridge (`addSelectionToCopilot`, `requestClipboardText`, `clipboardText`).
 - `src/webview/editor.css` – Menu styles beside `.image-context-menu`.
 - `src/webview/features/feedbackDomCapture.ts`, `src/webview/extensions/imageEnterSpacing.ts` – Exclude the new menu from capture/Enter guards.
@@ -207,6 +207,24 @@
 - **Fix:** Each chip now carries a per-range URI fragment (`L3-7`) as its identity: `src/editor/copilotChatAttach.ts` computes `fragment` per line range, the host attaches `document.uri.with({ fragment })` (keeps `value.range` intact so display and content slicing stay exact). Identical re-attachments dedupe naturally; different ranges get distinct chips.
 - **Files:** `src/editor/copilotChatAttach.ts`, `src/editor/MarkdownEditorProvider.ts`, `src/__tests__/editor/copilotChatAttach.test.ts` (+2 tests), `test/integration/extensionHost.test.cjs` (fragment-URI resolution test + two-range chat attach), `wiki/User-Guide.md`, `wiki/FAQ.md`, `CHANGELOG.md`.
 - **Notes:** Verified on real VS Code 1.141.0 that fragment URIs resolve to identical file content (`fs.stat`, `fs.readFile`, `openTextDocument`) and that `workbench.action.chat.open` accepts two same-file ranges with distinct fragments — this is the empirical gate for the identity trick.
+
+### 2026-10-11 – Context menu reliability (bugfix)
+
+- **What:** Two reported defects. (1) The menu sometimes showed only Paste/Select All despite a selection: `selectionContainsPoint` built a bounding box from the selection endpoint rects, which only spans the endpoints' columns — a right-click on a middle line of a multi-line selection fell outside it, and the handler then collapsed the selection itself. Replaced with document-position containment (`clickPos in [from, to]`, exported pure as `clickPreservesSelection`) plus a capture-phase `mousedown` snapshot so the pre-click selection survives any default handling before `contextmenu`. (2) Cut's icon never rendered: `codicon-scissors` does not exist in Codicons at all (verified against `microsoft/vscode-codicons` mapping.json and VS Code's own CSS). Cut now draws an inline SVG scissors; menu icons are spec'd as `iconClass` (must exist in the bundled `codicon.css`) or `svgIcon`.
+- **Files:** `src/webview/features/textContextMenu.ts` (`clickPreservesSelection`, `textContextMenuItemSpecs`, SVG icon), `src/webview/editor.ts` (mousedown snapshot + selection restore), `src/webview/editor.css` (`.menu-icon-svg`), `src/__tests__/webview/textContextMenu.test.ts` (+7 tests incl. a regression test asserting every codicon class used by the menu is defined in the bundled stylesheet), `CHANGELOG.md`.
+- **Notes:** The icon-availability test would have caught the missing scissors class; the multi-line middle-click case is pinned as a unit test on `clickPreservesSelection`.
+
+### 2026-10-11 – Select All feedback (bugfix)
+
+- **What:** Reported: after **Select All** the selection was invisible until the next right-click. The menu focuses its items for keyboard navigation, and ProseMirror does not sync the DOM selection into an unfocused view, so `selectAll()` changed `state.selection` without visible feedback; the next right-click refocused the editor and revealed it. Fix: `withEditorFocus` (exported from `textContextMenu.ts`) wraps every menu action so the editor is focused _before_ the action runs — visible selection feedback for Select All, and typing works immediately after Paste.
+- **Files:** `src/webview/features/textContextMenu.ts` (`withEditorFocus`), `src/webview/editor.ts` (all five menu handlers wrapped), `src/__tests__/webview/textContextMenu.test.ts` (+2 tests pinning focus-before-action ordering), `CHANGELOG.md`.
+- **Notes:** Focus restore happens only on menu _actions_, not on pointer-outside/blur dismissal, so clicking other VS Code UI never has focus stolen back.
+
+### 2026-10-11 – Select All removed (follow-up)
+
+- **What:** User requested Select All be removed from the right-click menu entirely (it duplicated the standard Ctrl+A editing behavior). Removed the `selectAll` action from `TextContextMenuAction`, the menu item, its handler in `editor.ts`, and the hidden-item separator heuristic (replaced by an explicit `separatorBefore` flag so the Copilot action still gets its own group). Also removed the now-obsolete "Select All feedback" changelog bullet and deleted the stale plan duplicate in `roadmap/pipeline/` (the commit `11ac042` had captured the pre-move copy).
+- **Files:** `src/webview/features/textContextMenu.ts`, `src/webview/editor.ts`, `src/webview/editor.css`, `src/__tests__/webview/textContextMenu.test.ts`, `CHANGELOG.md`, `wiki/User-Guide.md`, deleted `roadmap/pipeline/task-add-selection-to-copilot.md`.
+- **Notes:** Keyboard Ctrl+A remains standard editor behavior; only the menu entry is gone.
 
 ## 8. Decisions & Tradeoffs
 

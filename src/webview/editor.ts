@@ -73,9 +73,12 @@ import {
   getSelectionAsMarkdown,
 } from './utils/copyMarkdown';
 import {
+  clickPreservesSelection,
   createTextContextMenu,
   hideTextContextMenu,
   showTextContextMenu,
+  withEditorFocus,
+  type TextContextMenuSelection,
 } from './features/textContextMenu';
 import { buildCopilotSelectionMessage } from './features/copilotSelection';
 import { isUndoRedoShortcut } from './utils/undoRedoShortcut';
@@ -1170,7 +1173,7 @@ function initializeEditor(initialContent: string) {
     // Create table menu
     tableMenu = createTableMenu(editorInstance);
 
-    // Create the editor-body context menu (Cut/Copy/Paste/Select All + Copilot)
+    // Create the editor-body context menu (Cut/Copy/Paste + Copilot)
     textMenu = createTextContextMenu();
 
     // Setup image drag & drop handling
@@ -1190,6 +1193,30 @@ function initializeEditor(initialContent: string) {
     // setupCodeBlockLanguageBadges(editor);
 
     // Store handler references for cleanup on editor destroy
+    //
+    // Snapshot the selection and click position on right-button mousedown,
+    // before any default handling can move the caret. By `contextmenu` time the
+    // selection may already be collapsed, and a bounding-box check over the
+    // selection endpoints misreads clicks on middle lines of multi-line
+    // selections (they can lie outside the endpoints' columns).
+    let pendingRightClick: (TextContextMenuSelection & { clickPos: number | null }) | null = null;
+
+    const rightClickMouseDownHandler = (event: MouseEvent) => {
+      if (event.button !== 2) return;
+      if (isEventInsideModalOverlay(event) || isFeedbackEditingLocked()) return;
+      try {
+        const { from, to, empty } = editorInstance.state.selection;
+        const position = editorInstance.view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        });
+        pendingRightClick = { from, to, empty, clickPos: position ? position.pos : null };
+      } catch (error) {
+        console.error('[MD4H] Could not snapshot right-click state:', error);
+        pendingRightClick = null;
+      }
+    };
+
     const contextMenuHandler = (e: MouseEvent) => {
       // Don't override the native textarea context menu inside the math modal.
       if (isEventInsideModalOverlay(e)) return;
@@ -1224,21 +1251,38 @@ function initializeEditor(initialContent: string) {
 
         // A right-click inside the current selection must not collapse it;
         // outside, the caret moves to the click point like a native editor.
-        if (!selectionContainsPoint(editorInstance, e.clientX, e.clientY)) {
+        const rightClick = pendingRightClick;
+        pendingRightClick = null;
+        const liveSelection = editorInstance.state.selection;
+        const selection: TextContextMenuSelection = rightClick ?? {
+          from: liveSelection.from,
+          to: liveSelection.to,
+          empty: liveSelection.empty,
+        };
+        let clickPos = rightClick ? rightClick.clickPos : null;
+        if (clickPos === null) {
           const position = editorInstance.view.posAtCoords({ left: e.clientX, top: e.clientY });
-          if (position) {
-            editorInstance.commands.setTextSelection(position.pos);
+          clickPos = position ? position.pos : null;
+        }
+        if (clickPreservesSelection(selection, clickPos)) {
+          // Restore the snapshotted selection in case a default handler
+          // already collapsed it on the way to the context menu.
+          if (editorInstance.state.selection.empty && selection.from < selection.to) {
+            editorInstance.commands.setTextSelection({ from: selection.from, to: selection.to });
           }
+        } else if (clickPos !== null) {
+          editorInstance.commands.setTextSelection(clickPos);
         }
 
         e.preventDefault();
         tableMenu.style.display = 'none';
         showTextContextMenu(textMenu, e.clientX, e.clientY, hasEditorSelection(editorInstance), {
-          cut: () => runClipboardAction(editorInstance, 'cut'),
-          copy: () => runClipboardAction(editorInstance, 'copy'),
-          paste: () => runPasteAction(),
-          selectAll: () => editorInstance.commands.selectAll(),
-          addToCopilot: () => requestAddSelectionToCopilot(editorInstance),
+          cut: withEditorFocus(editorInstance, () => runClipboardAction(editorInstance, 'cut')),
+          copy: withEditorFocus(editorInstance, () => runClipboardAction(editorInstance, 'copy')),
+          paste: withEditorFocus(editorInstance, () => runPasteAction()),
+          addToCopilot: withEditorFocus(editorInstance, () =>
+            requestAddSelectionToCopilot(editorInstance)
+          ),
         });
       } catch (error) {
         console.error('[MD4H] Error in context menu:', error);
@@ -1376,6 +1420,7 @@ function initializeEditor(initialContent: string) {
     };
 
     // Register handlers
+    document.addEventListener('mousedown', rightClickMouseDownHandler, true);
     document.addEventListener('contextmenu', contextMenuHandler);
     document.addEventListener('click', documentClickHandler);
     document.addEventListener('keydown', keydownHandler);
@@ -2505,26 +2550,6 @@ function applyFeedbackPeerAuthoritativeContent(markdown: string, documentVersion
 /** Whether the editor currently holds a non-empty selection. */
 function hasEditorSelection(editorInstance: Editor): boolean {
   return !editorInstance.state.selection.empty;
-}
-
-/**
- * Whether a viewport point falls inside the current selection. Used to keep a
- * right-click inside the selection from collapsing it before the menu opens.
- */
-function selectionContainsPoint(editorInstance: Editor, clientX: number, clientY: number): boolean {
-  const { from, to, empty } = editorInstance.state.selection;
-  if (empty || from >= to) return false;
-  try {
-    const start = editorInstance.view.coordsAtPos(from);
-    const end = editorInstance.view.coordsAtPos(to);
-    const left = Math.min(start.left, end.left);
-    const right = Math.max(start.right, end.right);
-    const top = Math.min(start.top, end.top);
-    const bottom = Math.max(start.bottom, end.bottom);
-    return clientX >= left && clientX <= right && clientY >= top && clientY <= bottom;
-  } catch {
-    return false;
-  }
 }
 
 /**

@@ -11,10 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - **Add Selection to GitHub Copilot.** Select text in the editor, right-click, and choose **Add Selection to GitHub Copilot**. Your file is attached to GitHub Copilot Chat at the exact source lines you selected — only those lines, not the whole paragraphs around them — the same context chip as VS Code's built-in **Add Selection to Chat**, which does not work in this editor because it runs in a webview. You can attach several areas of the same file; each one becomes its own context chip. If Copilot Chat is unavailable or the document is unsaved, the selection is copied to the clipboard with its source location instead.
-- **Right-click editing menu.** Right-clicking in the editor now offers Cut, Copy, Paste, and Select All alongside the new Copilot action.
+- **Right-click editing menu.** Right-clicking in the editor now offers Cut, Copy, and Paste alongside the new Copilot action.
 
 ### Fixed
 
+- The right-click menu now reliably shows Cut, Copy and **Add Selection to GitHub Copilot** when you right-click a selection. Clicking a middle line of a multi-line selection used to collapse the selection first (the menu then showed only Paste and Select All).
+- Cut shows its scissors icon in the right-click menu. The icon slot was empty because the Codicons icon font has no scissors glyph; the mark is drawn inline now.
 - The "Feedback is not ready" warning says to reopen the editor if it stays blank. It only said to wait for the editor to load, which does not help when the editor never finished starting.
 
 ---
