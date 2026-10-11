@@ -61,8 +61,23 @@ import { hideOutOfSyncBanner, showOutOfSyncBanner } from './features/outOfSyncBa
 import { hideTocOverlay, isTocVisible, toggleTocOverlay } from './features/tocOverlay';
 import { hideSearchOverlay, isSearchVisible, showSearchOverlay } from './features/searchOverlay';
 import { showLinkDialog } from './features/linkDialog';
-import { processPasteContent, parseFencedCode } from './utils/pasteHandler';
-import { copySelectionAsMarkdown } from './utils/copyMarkdown';
+import {
+  processPasteContent,
+  parseFencedCode,
+  looksLikeMarkdown,
+  markdownToHtml,
+} from './utils/pasteHandler';
+import {
+  copySelectionAsMarkdown,
+  copyToClipboard,
+  getSelectionAsMarkdown,
+} from './utils/copyMarkdown';
+import {
+  createTextContextMenu,
+  hideTextContextMenu,
+  showTextContextMenu,
+} from './features/textContextMenu';
+import { buildCopilotSelectionMessage } from './features/copilotSelection';
 import { isUndoRedoShortcut } from './utils/undoRedoShortcut';
 import { shouldAutoLink } from './utils/linkValidation';
 import { buildOutlineFromEditor } from './utils/outline';
@@ -196,6 +211,7 @@ let closeFeedbackMoreMenu: ((restoreFocus: boolean) => void) | null = null;
 let isUpdating = false; // Prevent feedback loops
 let formattingToolbar: HTMLElement;
 let tableMenu: HTMLElement;
+let textMenu: HTMLElement;
 let documentSyncController: DocumentSyncController | null = null;
 let lastUserEditTime = 0; // Track when user last edited
 let pendingInitialContent: string | null = null; // Content from host before editor is ready
@@ -1154,6 +1170,9 @@ function initializeEditor(initialContent: string) {
     // Create table menu
     tableMenu = createTableMenu(editorInstance);
 
+    // Create the editor-body context menu (Cut/Copy/Paste/Select All + Copilot)
+    textMenu = createTextContextMenu();
+
     // Setup image drag & drop handling
     setupImageDragDrop(editorInstance, vscode, viewGeneration, isFeedbackEditingLocked);
 
@@ -1180,13 +1199,47 @@ function initializeEditor(initialContent: string) {
         // cell first; asking isActive('table') beforehand hid the menu on the first click.
         if (selectTableCellAtTarget(editorInstance, e.target as HTMLElement)) {
           e.preventDefault();
+          hideTextContextMenu(textMenu);
           tableMenu.style.display = 'block';
           tableMenu.style.position = 'fixed';
           tableMenu.style.left = `${e.clientX}px`;
           tableMenu.style.top = `${e.clientY}px`;
-        } else {
-          tableMenu.style.display = 'none';
+          return;
         }
+        tableMenu.style.display = 'none';
+
+        // Image and Mermaid surfaces own their own menus; leave the native menu
+        // (and their handlers) untouched there.
+        const target = e.target as HTMLElement | null;
+        if (
+          target?.closest(
+            '.image-wrapper, .image-menu-button, .image-context-menu, .mermaid-wrapper, .md4h-math-block-tooltip'
+          )
+        ) {
+          return;
+        }
+
+        // Only the editor body gets the text context menu.
+        if (!target || !editorInstance.view.dom.contains(target)) return;
+
+        // A right-click inside the current selection must not collapse it;
+        // outside, the caret moves to the click point like a native editor.
+        if (!selectionContainsPoint(editorInstance, e.clientX, e.clientY)) {
+          const position = editorInstance.view.posAtCoords({ left: e.clientX, top: e.clientY });
+          if (position) {
+            editorInstance.commands.setTextSelection(position.pos);
+          }
+        }
+
+        e.preventDefault();
+        tableMenu.style.display = 'none';
+        showTextContextMenu(textMenu, e.clientX, e.clientY, hasEditorSelection(editorInstance), {
+          cut: () => runClipboardAction(editorInstance, 'cut'),
+          copy: () => runClipboardAction(editorInstance, 'copy'),
+          paste: () => runPasteAction(),
+          selectAll: () => editorInstance.commands.selectAll(),
+          addToCopilot: () => requestAddSelectionToCopilot(editorInstance),
+        });
       } catch (error) {
         console.error('[MD4H] Error in context menu:', error);
       }
@@ -1194,6 +1247,7 @@ function initializeEditor(initialContent: string) {
 
     const documentClickHandler = () => {
       tableMenu.style.display = 'none';
+      hideTextContextMenu(textMenu);
     };
 
     // Handle keyboard shortcuts
@@ -1899,8 +1953,8 @@ window.addEventListener('message', async (event: MessageEvent) => {
           const cachedMetadata = imagePath ? getCachedImageMetadata(imagePath) : null;
           const preservedDimensions =
             cachedMetadata &&
-            cachedMetadata.dimensions.width > 0 &&
-            cachedMetadata.dimensions.height > 0
+              cachedMetadata.dimensions.width > 0 &&
+              cachedMetadata.dimensions.height > 0
               ? cachedMetadata.dimensions
               : null;
 
@@ -2227,6 +2281,14 @@ window.addEventListener('message', async (event: MessageEvent) => {
         });
         break;
       }
+      case 'clipboardText': {
+        // Response to `requestClipboardText` from the context menu's Paste item.
+        const text = typeof message.text === 'string' ? message.text : '';
+        if (text.length > 0 && editor && !isFeedbackEditingLocked()) {
+          insertClipboardTextForContextMenu(editor, text);
+        }
+        break;
+      }
       default:
         console.warn('[MD4H] Unknown message type:', message.type);
     }
@@ -2438,6 +2500,99 @@ function applyFeedbackPeerAuthoritativeContent(markdown: string, documentVersion
   resetHostReconciliation();
   acceptedDocumentVersion = documentVersion;
   return true;
+}
+
+/** Whether the editor currently holds a non-empty selection. */
+function hasEditorSelection(editorInstance: Editor): boolean {
+  return !editorInstance.state.selection.empty;
+}
+
+/**
+ * Whether a viewport point falls inside the current selection. Used to keep a
+ * right-click inside the selection from collapsing it before the menu opens.
+ */
+function selectionContainsPoint(editorInstance: Editor, clientX: number, clientY: number): boolean {
+  const { from, to, empty } = editorInstance.state.selection;
+  if (empty || from >= to) return false;
+  try {
+    const start = editorInstance.view.coordsAtPos(from);
+    const end = editorInstance.view.coordsAtPos(to);
+    const left = Math.min(start.left, end.left);
+    const right = Math.max(start.right, end.right);
+    const top = Math.min(start.top, end.top);
+    const bottom = Math.max(start.bottom, end.bottom);
+    return clientX >= left && clientX <= right && clientY >= top && clientY <= bottom;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Run Cut or Copy for the context menu. The selection is serialized to Markdown
+ * first so the clipboard holds the same content as the toolbar's copy action,
+ * then the document is updated through the normal sync path.
+ */
+function runClipboardAction(editorInstance: Editor, action: 'cut' | 'copy'): void {
+  const markdown = getSelectionAsMarkdown(editorInstance);
+  if (markdown === null) return;
+
+  void copyToClipboard(markdown)
+    .then(result => {
+      if (!result.success) {
+        console.warn('[MD4H] Context menu clipboard write failed:', result.error);
+      }
+    })
+    .catch((error: unknown) => {
+      console.error('[MD4H] Context menu clipboard action failed:', error);
+    });
+
+  if (action === 'cut') {
+    editorInstance.commands.deleteSelection();
+  }
+}
+
+/**
+ * Run Paste for the context menu. Webviews cannot read the clipboard reliably,
+ * so the host reads it and returns the text through `clipboardText`.
+ */
+function runPasteAction(): void {
+  vscode.postMessage({ type: 'requestClipboardText' });
+}
+
+/**
+ * Insert clipboard text the way a real paste would: raw inside code blocks,
+ * Markdown-converted when the text is Markdown, plain otherwise.
+ */
+function insertClipboardTextForContextMenu(editorInstance: Editor, text: string): void {
+  if (editorInstance.isActive('codeBlock')) {
+    const fenced = parseFencedCode(text);
+    insertRawCodeText(editorInstance, fenced ? fenced.content : text);
+    return;
+  }
+
+  if (looksLikeMarkdown(text)) {
+    editorInstance.commands.insertContent(markdownToHtml(text));
+    return;
+  }
+
+  editorInstance.commands.insertContent(text);
+}
+
+/**
+ * Ask the host to attach the current selection to GitHub Copilot Chat. The
+ * request carries the canonical blocks covering the selection so the host can
+ * resolve their exact source lines.
+ */
+function requestAddSelectionToCopilot(editorInstance: Editor): void {
+  const message = buildCopilotSelectionMessage(editorInstance);
+  if (!message) {
+    console.warn('[MD4H] No attachable selection for GitHub Copilot');
+    void import('./features/auditOverlay').then(({ showToast }) => {
+      showToast('Could not map that selection to source lines. Try selecting whole paragraphs.', 'info');
+    });
+    return;
+  }
+  vscode.postMessage(message);
 }
 
 /**

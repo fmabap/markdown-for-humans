@@ -50,7 +50,11 @@ function isTextSelection(selection: unknown): selection is TextSelection {
 
 function isMenuButtonTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest('.image-menu-button') || target.closest('.image-context-menu'));
+  return Boolean(
+    target.closest('.image-menu-button') ||
+      target.closest('.image-context-menu') ||
+      target.closest('.text-context-menu')
+  );
 }
 
 /**

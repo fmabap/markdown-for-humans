@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Add Selection to GitHub Copilot.** Select text in the editor, right-click, and choose **Add Selection to GitHub Copilot**. Your file is attached to GitHub Copilot Chat at the exact source lines you selected — only those lines, not the whole paragraphs around them — the same context chip as VS Code's built-in **Add Selection to Chat**, which does not work in this editor because it runs in a webview. You can attach several areas of the same file; each one becomes its own context chip. If Copilot Chat is unavailable or the document is unsaved, the selection is copied to the clipboard with its source location instead.
+- **Right-click editing menu.** Right-clicking in the editor now offers Cut, Copy, Paste, and Select All alongside the new Copilot action.
+
 ### Fixed
 
 - The "Feedback is not ready" warning says to reopen the editor if it stays blank. It only said to wait for the editor to load, which does not help when the editor never finished starting.
@@ -111,12 +116,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### What's New
 
 #### LLM Feedback review sessions
+
 Review a document in a read-only Feedback mode, comment on text, whole blocks, table cells or captured screen areas, and hand the finished bundle to an AI agent. Drafts are saved under `.md4h/feedback` and can be resumed later.
 
 #### SVG images
+
 SVG images render in the editor and stay sharp when resized. Display size is written to the Markdown without changing the SVG file.
 
 #### Syntax highlighting for code blocks
+
 Code blocks are highlighted incrementally in a background worker, with theme-aware colors for light, dark and high-contrast themes. Plain, unknown and unlabeled fences stay literal text.
 
 ### Added
@@ -415,7 +423,7 @@ This release includes several under-the-hood improvements that make the extensio
 ### Added
 
 - Added shouldAutoLink validation utility to prevent unwanted auto-linking of file extensions and bare filenames
-- Added comprehensive test suite for link autolink prevention (src/__tests__/webview/linkAutolink.test.ts)
+- Added comprehensive test suite for link autolink prevention (src/**tests**/webview/linkAutolink.test.ts)
 - Added pre-commit hook that automatically runs npm run lint:fix before each commit
 - Added enhanced test setup files (setup-after-env.ts) for improved test reliability
 - Added GitHub Actions workflow for automated package creation on push to main branch

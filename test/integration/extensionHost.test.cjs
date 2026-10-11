@@ -64,6 +64,72 @@ suite('Markdown Editor for Humans Extension Development Host', () => {
 
     const commands = await vscode.commands.getCommands(true);
     assert.equal(commands.includes('markdownForHumans.openFile'), true);
+    // "Add Selection to GitHub Copilot" is intentionally available only from
+    // the editor's context menu and must not be contributed as a command.
+    assert.equal(commands.includes('markdownForHumans.addSelectionToCopilot'), false);
+  });
+
+  test('resolves fragment URIs to the same file content', async function () {
+    this.timeout(60_000);
+    // Chat attachment chips are deduplicated by `uri.toString() + range`, and
+    // an extension cannot serialize a real Range instance (its toString() is
+    // lost across the process boundary). Unique fragments are therefore the
+    // only way to attach several line ranges of one file. This test proves the
+    // file layer resolves a fragment URI to the same document.
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(workspaceFolder, 'Expected the integration fixture workspace to be open');
+    const smokeUri = vscode.Uri.joinPath(workspaceFolder.uri, 'smoke.md');
+    const plainBytes = await vscode.workspace.fs.readFile(smokeUri);
+    const plainDocument = await vscode.workspace.openTextDocument(smokeUri);
+
+    const fragmentUri = smokeUri.with({ fragment: 'L1-2' });
+    const stat = await vscode.workspace.fs.stat(fragmentUri);
+    assert.equal(stat.type, vscode.FileType.File);
+
+    const fragmentBytes = await vscode.workspace.fs.readFile(fragmentUri);
+    assert.equal(
+      Buffer.compare(Buffer.from(fragmentBytes), Buffer.from(plainBytes)),
+      0,
+      'fragment URI must read the same file bytes'
+    );
+
+    const fragmentDocument = await vscode.workspace.openTextDocument(fragmentUri);
+    assert.equal(fragmentDocument.getText(), plainDocument.getText());
+  });
+
+  test('the built-in chat command accepts the file + line-range attachment shape', async function () {
+    this.timeout(60_000);
+    // This is the undocumented contract behind "Add Selection to GitHub
+    // Copilot": `workbench.action.chat.open` with `attachFiles` entries carrying
+    // a 1-based internal IRange. If a VS Code build changes that shape, this
+    // test fails here instead of silently attaching nothing in the editor.
+    const commands = await vscode.commands.getCommands(true);
+    if (!commands.includes('workbench.action.chat.open')) {
+      // No chat surface on this host; the extension falls back to the clipboard.
+      return;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(workspaceFolder, 'Expected the integration fixture workspace to be open');
+    const smokeUri = vscode.Uri.joinPath(workspaceFolder.uri, 'smoke.md');
+
+    // Two ranges of one file must be passed with distinct fragment URIs: the
+    // attachment model deduplicates by `uri.toString() + range`, and a
+    // serialized plain range object stringifies identically for every range.
+    await vscode.commands.executeCommand('workbench.action.chat.open', {
+      isPartialQuery: true,
+      attachFiles: [
+        {
+          uri: smokeUri.with({ fragment: 'L1-2' }),
+          range: { startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 1 },
+        },
+        {
+          uri: smokeUri.with({ fragment: 'L3-4' }),
+          range: { startLineNumber: 3, startColumn: 1, endLineNumber: 4, endColumn: 1 },
+        },
+      ],
+    });
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   });
 
   test('ships the self-contained worker at a readable extension resource URI', async () => {

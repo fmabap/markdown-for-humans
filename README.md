@@ -6,7 +6,7 @@
 
 ![Open a Markdown file and write in the rendered view](https://raw.githubusercontent.com/concretios/markdown-for-humans/77fe1f0d8a388da2dd20ede7efb6065dc2e1f96a/marketplace-assets/gifs/v2/hero.gif)
 
-*Open any `.md` file, write in the rendered view, and use the Markdown shortcuts you already know: `##` for a heading, `[ ]` for a task, `Cmd/Ctrl+B` for bold.*
+_Open any `.md` file, write in the rendered view, and use the Markdown shortcuts you already know: `##` for a heading, `[ ]` for a task, `Cmd/Ctrl+B` for bold._
 
 ## Install
 
@@ -33,7 +33,7 @@
 - **Right-click** any cell to insert or delete rows and columns
 - **Toolbar** controls for inserting and editing tables
 
-*Stop counting pipes and dashes.*
+_Stop counting pipes and dashes._
 
 ---
 
@@ -95,6 +95,7 @@ The document is locked while you review, so your comments always point at the so
 
 - **Document outline** to jump between headings in long documents
 - **In-document search** with match highlighting
+- **Add Selection to GitHub Copilot:** right-click a selection and send it to GitHub Copilot Chat with its exact source lines attached as context
 - **Export** to PDF or Word for people outside your repo. PDF export uses Chrome or Chromium on your machine; Word export has limits listed in [Known Issues](./KNOWN_ISSUES.md)
 - **Word count and reading time** in the status bar
 - **Theme aware:** follows your VS Code theme, fonts and font size
@@ -110,7 +111,7 @@ The two work side by side: both appear in the editor picker, and you choose per 
 Only the blocks you edit. Unedited blocks keep their exact source on save. Edited blocks use a standard Markdown form, listed in [Known Issues](./KNOWN_ISSUES.md).
 
 **How do I make it my default Markdown editor?**
-Right-click a `.md` file, choose **Open With...**, then **Configure default editor for '*.md'...** and pick **Visual Editor** (Markdown Editor for Humans).
+Right-click a `.md` file, choose **Open With...**, then **Configure default editor for '\*.md'...** and pick **Visual Editor** (Markdown Editor for Humans).
 
 **Dropping an image does nothing.**
 Hold **Shift** while you drop: VS Code requires it for drops into an editor. In Cursor, drags from the workspace explorer are often not detected; use the image insert dialog or drop from Finder.
@@ -124,14 +125,14 @@ Click the **Source** button in the toolbar to open the source beside the rendere
 
 Click the gear in the editor toolbar, or open Settings (`Ctrl+,` / `Cmd+,`) and search for `markdownForHumans`. The most used settings:
 
-| Setting | Default | What it does |
-| --- | --- | --- |
-| `markdownForHumans.imagePath` | `"images"` | Folder for saved images, relative to `imagePathBase` |
-| `markdownForHumans.imagePathBase` | `"relativeToDocument"` | Resolve `imagePath` from the document folder or the workspace folder |
-| `markdownForHumans.imagePreview.hover.enabled` | `true` | Show the image details overlay on hover |
-| `markdownForHumans.imageResize.skipWarning` | `false` | Resize images without the confirmation dialog |
-| `markdownForHumans.feedback.handoffPromptTemplate` | built-in prompt | Custom wording for the prompt copied by **Finish & copy**. Must include `{{feedbackFile}}`; see [Feedback Sessions](docs/FEEDBACK.md) |
-| `markdownForHumans.chromePath` | `""` | Chrome or Chromium used for PDF export; empty means auto-detect |
+| Setting                                            | Default                | What it does                                                                                                                          |
+| -------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `markdownForHumans.imagePath`                      | `"images"`             | Folder for saved images, relative to `imagePathBase`                                                                                  |
+| `markdownForHumans.imagePathBase`                  | `"relativeToDocument"` | Resolve `imagePath` from the document folder or the workspace folder                                                                  |
+| `markdownForHumans.imagePreview.hover.enabled`     | `true`                 | Show the image details overlay on hover                                                                                               |
+| `markdownForHumans.imageResize.skipWarning`        | `false`                | Resize images without the confirmation dialog                                                                                         |
+| `markdownForHumans.feedback.handoffPromptTemplate` | built-in prompt        | Custom wording for the prompt copied by **Finish & copy**. Must include `{{feedbackFile}}`; see [Feedback Sessions](docs/FEEDBACK.md) |
+| `markdownForHumans.chromePath`                     | `""`                   | Chrome or Chromium used for PDF export; empty means auto-detect                                                                       |
 
 Requires VS Code 1.98.0 or newer in a trusted, disk-backed workspace. Compatible VS Code derivatives must provide the same desktop extension-host and webview APIs.
 

@@ -2599,6 +2599,65 @@
     margin: 4px 0;
   }
 
+  /* Editor-body context menu (Cut/Copy/Paste/Select All + Copilot).
+     Fixed positioning: it is placed at the pointer in viewport coordinates,
+     unlike the image menu which anchors to its button. */
+  .text-context-menu {
+    position: fixed;
+    min-width: 220px;
+    background: var(--vscode-menu-background);
+    border: 1px solid var(--vscode-menu-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    overflow: hidden;
+    padding: 4px 0;
+  }
+
+  .text-context-menu .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    color: var(--vscode-menu-foreground);
+    font-size: 13px;
+    transition: background 0.1s ease;
+    user-select: none;
+  }
+
+  .text-context-menu .menu-item:hover,
+  .text-context-menu .menu-item:focus {
+    background: var(--vscode-menu-selectionBackground);
+    color: var(--vscode-menu-selectionForeground);
+    outline: none;
+  }
+
+  .text-context-menu .menu-item-disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .text-context-menu .menu-item-disabled:hover {
+    background: transparent;
+    color: var(--vscode-menu-foreground);
+  }
+
+  .text-context-menu .menu-icon {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  .text-context-menu .menu-label {
+    flex: 1;
+  }
+
+  .text-context-menu .menu-separator {
+    height: 1px;
+    background: var(--vscode-menu-separatorBackground);
+    margin: 4px 0;
+  }
+
   /* Keep menu button visible when menu is open */
   .image-wrapper:has(.image-context-menu[style*="block"]) .image-menu-button {
     display: flex;
@@ -3991,6 +4050,7 @@ body:has(.search-overlay.visible) .out-of-sync-banner {
 .feedback-peer-locked .image-hover-overlay,
 .feedback-peer-locked .image-menu-button,
 .feedback-peer-locked .image-context-menu,
+.feedback-peer-locked .text-context-menu,
 .feedback-peer-locked .image-metadata-footer,
 .feedback-peer-locked .table-menu,
 .feedback-peer-locked .column-resize-handle,
@@ -4045,6 +4105,7 @@ body:has(.search-overlay.visible) .out-of-sync-banner {
 .feedback-review-active .image-hover-overlay,
 .feedback-review-active .image-menu-button,
 .feedback-review-active .image-context-menu,
+.feedback-review-active .text-context-menu,
 .feedback-review-active .image-metadata-footer,
 .feedback-review-active .table-menu,
 .feedback-review-active .column-resize-handle,
@@ -5050,6 +5111,7 @@ body[data-feedback-comments-state='hidden'] .feedback-target-bracket-layer {
 .feedback-capture-active .image-hover-overlay,
 .feedback-capture-active .image-menu-button,
 .feedback-capture-active .image-context-menu,
+.feedback-capture-active .text-context-menu,
 .feedback-capture-active .image-metadata-footer,
 .feedback-capture-active .column-resize-handle,
 .feedback-capture-active .code-block-copy-button,

@@ -54,6 +54,7 @@ const CAPTURE_CHROME_SELECTOR = [
   '.image-hover-overlay',
   '.image-menu-button',
   '.image-context-menu',
+  '.text-context-menu',
   '.image-metadata-footer',
   '.table-menu',
   '.column-resize-handle',

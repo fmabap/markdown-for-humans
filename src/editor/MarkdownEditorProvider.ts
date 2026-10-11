@@ -71,6 +71,15 @@ import {
   type FeedbackAnchorMap,
 } from './feedbackAnchors';
 import {
+  resolveCopilotSelectionLineRange,
+  type CanonicalCopilotBlock,
+} from './copilotSelectionRange';
+import {
+  buildCopilotChatPlan,
+  renderCopilotClipboardFallback,
+} from './copilotChatAttach';
+import type { CopilotSelectionAnchors } from './copilotSelectionLines';
+import {
   FEEDBACK_ERROR_CODES,
   FEEDBACK_MAX_EXACT_CELL_COUNT_PER_SESSION,
   isFeedbackCellRectangleWithinExactLimit,
@@ -170,14 +179,14 @@ type FeedbackCriticalHostMessage = Extract<
   FeedbackHostMessage,
   {
     type:
-      | 'feedback.finished'
-      | 'feedback.discarded'
-      | 'feedback.close.sync'
-      | 'feedback.close.release'
-      | 'feedback.transition.sync'
-      | 'feedback.peer.lock.acquire'
-      | 'feedback.peer.release'
-      | 'feedback.session.transfer';
+    | 'feedback.finished'
+    | 'feedback.discarded'
+    | 'feedback.close.sync'
+    | 'feedback.close.release'
+    | 'feedback.transition.sync'
+    | 'feedback.peer.lock.acquire'
+    | 'feedback.peer.release'
+    | 'feedback.session.transfer';
   }
 >;
 type FeedbackCriticalMessageType = FeedbackCriticalHostMessage['type'];
@@ -746,7 +755,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
   private readonly deferredReadyAfterDocumentEdits = new WeakMap<
     vscode.Webview,
     {
-      readonly message: { type: string; [key: string]: unknown };
+      readonly message: { type: string;[key: string]: unknown };
       readonly document: vscode.TextDocument;
     }
   >();
@@ -889,7 +898,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     };
   }
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  constructor(private readonly context: vscode.ExtensionContext) { }
 
   /** Release document queues, timers, and pending local waiters on extension shutdown. */
   public dispose(): void {
@@ -1491,7 +1500,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Handle messages from webview
    */
   private handleWebviewMessage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ) {
@@ -1532,8 +1541,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       if (parsed === null) {
         const requestId =
           typeof message.requestId === 'string' &&
-          message.requestId.trim().length > 0 &&
-          message.requestId.length <= 256
+            message.requestId.trim().length > 0 &&
+            message.requestId.length <= 256
             ? message.requestId
             : undefined;
         const activeSession = this.feedbackSessions.get(document.uri.toString());
@@ -1767,10 +1776,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
           sourceWebview: webview,
           ...(correlatedEdit
             ? {
-                viewGeneration: correlatedEdit.viewGeneration,
-                baseDocumentVersion: correlatedEdit.baseDocumentVersion,
-                localRevision: correlatedEdit.localRevision,
-              }
+              viewGeneration: correlatedEdit.viewGeneration,
+              baseDocumentVersion: correlatedEdit.baseDocumentVersion,
+              localRevision: correlatedEdit.localRevision,
+            }
             : {}),
         });
         // `markdownForHumans.autoSave.enabled` debounced save — only for
@@ -2001,6 +2010,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
         break;
       case 'openFileAtLocation':
         void this.handleOpenFileAtLocation(message);
+        break;
+      case 'addSelectionToCopilot':
+        void this.handleAddSelectionToCopilot(message, document, webview);
+        break;
+      case 'requestClipboardText':
+        void this.handleRequestClipboardText(webview);
         break;
       case 'getImageMetadata':
         this.handleGetImageMetadata(message, document, webview);
@@ -2548,14 +2563,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     const message: Extract<FeedbackHostMessage, { type: 'feedback.session.transfer' }> =
       phase === 'apply'
         ? {
-            ...identity,
-            phase: 'apply',
-            session: this.feedbackSessionTransferPayload(
-              pending.nextSession,
-              workspaceRoot,
-              webview
-            ),
-          }
+          ...identity,
+          phase: 'apply',
+          session: this.feedbackSessionTransferPayload(
+            pending.nextSession,
+            workspaceRoot,
+            webview
+          ),
+        }
         : { ...identity, phase };
     return {
       role,
@@ -2863,7 +2878,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
         this.getDocumentVersion(pending.document) !== pending.documentVersion ||
         // Reuse the BOM-stripped text digest — not pending.sourceSha256 (saved bytes).
         crypto.createHash('sha256').update(pending.document.getText(), 'utf8').digest('hex') !==
-          expectedTextSha256
+        expectedTextSha256
       ) {
         this.beginFeedbackSessionTransferRollback(documentKey, pending);
         return;
@@ -2925,8 +2940,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     } catch (error) {
       this.beginFeedbackSessionTransferRollback(documentKey, pending);
       console.warn(
-        `[MD4H] Feedback transfer revalidation failed; the staged handoff is rolling back: ${
-          error instanceof Error ? error.message : String(error)
+        `[MD4H] Feedback transfer revalidation failed; the staged handoff is rolling back: ${error instanceof Error ? error.message : String(error)
         }`
       );
     } finally {
@@ -3545,8 +3559,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       .then(() => this.announceMatchingFeedbackDrafts(document, webview))
       .catch(error => {
         console.warn(
-          `[MD4H] Could not safely demote failed Feedback activation: ${
-            error instanceof Error ? error.message : String(error)
+          `[MD4H] Could not safely demote failed Feedback activation: ${error instanceof Error ? error.message : String(error)
           }`
         );
       });
@@ -3586,16 +3599,16 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
           'target' in item
             ? projectFeedbackTextItemSummaryV2(item)
             : {
-                focus: item.focus,
-                ...(item.renderedRange === undefined ? {} : { renderedRange: item.renderedRange }),
-                ...(item.cellTarget === undefined ? {} : { cellTarget: item.cellTarget }),
-              };
+              focus: item.focus,
+              ...(item.renderedRange === undefined ? {} : { renderedRange: item.renderedRange }),
+              ...(item.cellTarget === undefined ? {} : { cellTarget: item.cellTarget }),
+            };
         return {
           ...summary,
           kind: 'text' as const,
           focus: projection.focus,
           ...(projection.renderedRange === undefined ||
-          session.degradedRenderedRangeIds.has(item.id)
+            session.degradedRenderedRangeIds.has(item.id)
             ? {}
             : { renderedRange: projection.renderedRange }),
           ...(projection.cellTarget === undefined || session.degradedCellTargetIds.has(item.id)
@@ -4879,10 +4892,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     let requestSession: ActiveFeedbackSession | undefined;
     let closeOperation:
       | {
-          session: ActiveFeedbackSession;
-          promise: Promise<void>;
-          resolve: () => void;
-        }
+        session: ActiveFeedbackSession;
+        promise: Promise<void>;
+        resolve: () => void;
+      }
       | undefined;
     try {
       if (message.type === 'feedback.peer.reveal') {
@@ -5055,7 +5068,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
         const currentSession = this.feedbackSessions.get(document.uri.toString());
         const terminalTypes: Array<'feedback.finished' | 'feedback.discarded'> =
           currentSession?.pendingClose?.requestId === message.requestId &&
-          currentSession.sessionId === message.sessionId
+            currentSession.sessionId === message.sessionId
             ? [currentSession.pendingClose.terminalType]
             : ['feedback.finished', 'feedback.discarded'];
         for (const terminalType of terminalTypes) {
@@ -5286,25 +5299,25 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
           const resolved =
             'target' in message
               ? this.resolveFeedbackTextTargetV2(
-                  session,
-                  target,
-                  message.target,
-                  message.evidence,
-                  budgetItems
-                )
+                session,
+                target,
+                message.target,
+                message.evidence,
+                budgetItems
+              )
               : this.resolveLegacyFeedbackTextTargetV2(
-                  session,
-                  target,
-                  {
-                    focus: message.focus,
-                    feedback: message.feedback,
-                    ...(message.renderedRange === undefined
-                      ? {}
-                      : { renderedRange: message.renderedRange }),
-                    ...(message.cellTarget === undefined ? {} : { cellTarget: message.cellTarget }),
-                  },
-                  budgetItems
-                );
+                session,
+                target,
+                {
+                  focus: message.focus,
+                  feedback: message.feedback,
+                  ...(message.renderedRange === undefined
+                    ? {}
+                    : { renderedRange: message.renderedRange }),
+                  ...(message.cellTarget === undefined ? {} : { cellTarget: message.cellTarget }),
+                },
+                budgetItems
+              );
           const item = await session.store.addTextFeedbackV2(
             {
               startLine: target.startLine,
@@ -5341,17 +5354,17 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
             key === undefined
               ? ''
               : crypto
-                  .createHash('sha256')
-                  .update(
-                    JSON.stringify([
-                      message.startOrdinal,
-                      message.endOrdinal,
-                      message.feedback,
-                      message.imageDataUrl,
-                    ]),
-                    'utf8'
-                  )
-                  .digest('hex');
+                .createHash('sha256')
+                .update(
+                  JSON.stringify([
+                    message.startOrdinal,
+                    message.endOrdinal,
+                    message.feedback,
+                    message.imageDataUrl,
+                  ]),
+                  'utf8'
+                )
+                .digest('hex');
           const prior = key === undefined ? undefined : session.screenshotAddKeys?.get(key);
           const priorIsLive =
             prior !== undefined &&
@@ -6503,13 +6516,13 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       const current = this.currentFeedbackPeerLock(documentKey);
       const acquire = current
         ? this.acquireFeedbackPeerLockForWebview(
-            documentKey,
-            current.ownerWebview,
-            webview,
-            pendingRelease.requestId,
-            pendingRelease.lockId,
-            true
-          )
+          documentKey,
+          current.ownerWebview,
+          webview,
+          pendingRelease.requestId,
+          pendingRelease.lockId,
+          true
+        )
         : Promise.reject(new Error('Feedback release ownership disappeared.'));
       void acquire
         .then(() => {
@@ -6743,8 +6756,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     if (requiresPeerRelease && document) {
       void this.releaseFeedbackOwnerAfterDisposal(documentKey, webview, document).catch(error => {
         console.warn(
-          `[MD4H] Could not safely release Feedback after its owner closed: ${
-            error instanceof Error ? error.message : String(error)
+          `[MD4H] Could not safely release Feedback after its owner closed: ${error instanceof Error ? error.message : String(error)
           }`
         );
       });
@@ -7111,9 +7123,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
         currentText === undefined
           ? undefined
           : crypto
-              .createHash('sha256')
-              .update(currentText.replace(/\r\n/g, '\n'), 'utf8')
-              .digest('hex');
+            .createHash('sha256')
+            .update(currentText.replace(/\r\n/g, '\n'), 'utf8')
+            .digest('hex');
       if (
         transition.expectedFlushContentSha256 !== undefined &&
         transition.expectedFlushContentSha256 === currentSha256
@@ -7546,9 +7558,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       type: 'feedback.error',
       sessionId: session.sessionId,
       code: FEEDBACK_ERROR_CODES.targetDoesNotMap,
-      message: `Exact highlighting could not be restored for ${visibleIds}${
-        remaining > 0 ? ` and ${remaining} more` : ''
-      }. Their source-line anchors are preserved and block markers are shown.`,
+      message: `Exact highlighting could not be restored for ${visibleIds}${remaining > 0 ? ` and ${remaining} more` : ''
+        }. Their source-line anchors are preserved and block markers are shown.`,
       recoverable: true,
     });
   }
@@ -7728,7 +7739,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Handle document export request from webview
    */
   private async handleExportDocument(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument
   ): Promise<void> {
     const format = message.format as string;
@@ -7754,7 +7765,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * with the same pathname/suffix boundary as rendering.
    */
   private async handleAuditCheckFile(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -7899,7 +7910,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * @param webview - Target webview to post the result back to.
    */
   private async handleAuditPickFile(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -8027,7 +8038,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
   }
 
   private async handleAuditCheckUrl(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     _document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -8129,7 +8140,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * on the display URI. Encoded filename delimiters remain part of the file.
    */
   private handleResolveImageUri(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): void {
@@ -8245,7 +8256,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * the image first if it is outside the workspace.
    */
   private async handleWorkspaceImage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -8404,7 +8415,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * stays correlated to its webview and placeholder until document sync uses it.
    */
   private trackPendingImageSave(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): void {
@@ -8459,7 +8470,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       pending.size >= MarkdownEditorProvider.PENDING_HOST_IMAGE_SAVE_LIMIT ||
       denseData.byteLength > MarkdownEditorProvider.PENDING_HOST_IMAGE_SAVE_BYTE_LIMIT ||
       retainedBytes + denseData.byteLength >
-        MarkdownEditorProvider.PENDING_HOST_IMAGE_SAVE_BYTE_LIMIT
+      MarkdownEditorProvider.PENDING_HOST_IMAGE_SAVE_BYTE_LIMIT
     ) {
       const error =
         'Too many images are still being saved. Wait for the current image saves to finish and try again.';
@@ -8640,21 +8651,21 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     const completion: PendingImageSaveCompletion =
       result.kind === 'saved'
         ? {
-            type: 'imageSaved',
-            protocolVersion: IMAGE_SAVE_COMPLETION_PROTOCOL_VERSION,
-            completionId: entry.completionId,
-            placeholderId: entry.placeholderId,
-            viewGeneration: entry.viewGeneration,
-            newSrc: result.destination,
-          }
+          type: 'imageSaved',
+          protocolVersion: IMAGE_SAVE_COMPLETION_PROTOCOL_VERSION,
+          completionId: entry.completionId,
+          placeholderId: entry.placeholderId,
+          viewGeneration: entry.viewGeneration,
+          newSrc: result.destination,
+        }
         : {
-            type: 'imageError',
-            protocolVersion: IMAGE_SAVE_COMPLETION_PROTOCOL_VERSION,
-            completionId: entry.completionId,
-            placeholderId: entry.placeholderId,
-            viewGeneration: entry.viewGeneration,
-            error: (result.error || 'Image save failed.').slice(0, 32 * 1024),
-          };
+          type: 'imageError',
+          protocolVersion: IMAGE_SAVE_COMPLETION_PROTOCOL_VERSION,
+          completionId: entry.completionId,
+          placeholderId: entry.placeholderId,
+          viewGeneration: entry.viewGeneration,
+          error: (result.error || 'Image save failed.').slice(0, 32 * 1024),
+        };
     this.disposeImageCompletionDelivery(entry.completionDelivery);
     entry.completionDelivery = this.createImageCompletionDelivery(webview, completion);
     this.activateImageCompletionDelivery(entry.completionDelivery);
@@ -8733,7 +8744,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     return (
       entry.data !== undefined &&
       `data:${entry.mimeType};base64,`.length + 4 * Math.ceil(entry.data.byteLength / 3) <=
-        MarkdownEditorProvider.IMAGE_FALLBACK_URI_LIMIT
+      MarkdownEditorProvider.IMAGE_FALLBACK_URI_LIMIT
     );
   }
 
@@ -8791,7 +8802,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * use trackPendingImageSave so terminal delivery is ACKed and retried.
    */
   private async handleSaveImage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<string | null> {
@@ -8820,7 +8831,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
 
   /** Persist one validated image buffer and return its encoded Markdown destination. */
   private async persistImage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     data: Uint8Array
   ): Promise<ImagePersistenceResult> {
@@ -8923,7 +8934,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * backup/write, based on the resolved target extension and original bytes.
    */
   private async handleResizeImage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9062,7 +9073,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Restores image from backup
    */
   private async handleUndoResize(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9130,7 +9141,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * SVG restoration remains allowed through the separate undo handler.
    */
   private async handleRedoResize(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9208,7 +9219,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * - otherFiles: list of other markdown files referencing the same image (with line numbers)
    */
   private async handleGetImageReferences(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9293,6 +9304,127 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[MD4H] Failed to open file: ${errorMessage}`);
       vscode.window.showErrorMessage(`Failed to open file: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Attach the current rich-view selection to GitHub Copilot Chat as a
+   * file + line-range context chip, mirroring the built-in text editor's
+   * "Add Selection to Chat" action.
+   *
+   * The renderer sends the canonical top-level blocks covering its selection
+   * plus plain-text endpoint anchors. Pending renderer edits are flushed to the
+   * TextDocument first so the resolved line numbers describe the authoritative
+   * source, then the block ordinals are mapped to source lines and narrowed to
+   * the lines that contain the selection. When the chat command is unavailable
+   * or the document cannot be attached, a clipboard fallback preserves the
+   * context.
+   */
+  private async handleAddSelectionToCopilot(
+    message: { type: string;[key: string]: unknown },
+    document: vscode.TextDocument,
+    webview: vscode.Webview
+  ): Promise<void> {
+    try {
+      const blocks = parseCopilotCanonicalBlocks(message.blocks);
+      const startOrdinal = message.startOrdinal;
+      const endOrdinal = message.endOrdinal;
+      if (
+        !blocks ||
+        typeof startOrdinal !== 'number' ||
+        typeof endOrdinal !== 'number' ||
+        !Number.isInteger(startOrdinal) ||
+        !Number.isInteger(endOrdinal)
+      ) {
+        console.warn('[MD4H] Ignoring malformed addSelectionToCopilot message');
+        return;
+      }
+      const selectionText = typeof message.selectionText === 'string' ? message.selectionText : '';
+      const anchors = parseCopilotSelectionAnchors(message);
+
+      // The renderer posts its edit before acknowledging a flush barrier, so a
+      // successful barrier leaves the TextDocument authoritative for mapping.
+      await this.flushRendererAtDocumentBoundary(
+        document,
+        webview,
+        FEEDBACK_FLUSH_ACK_TIMEOUT_MS,
+        'copilot-selection'
+      );
+
+      const documentText = document.getText();
+      const resolved = resolveCopilotSelectionLineRange(
+        documentText,
+        blocks,
+        startOrdinal,
+        endOrdinal,
+        anchors
+      );
+      const lineRange = resolved.ok ? resolved.range : null;
+      if (!resolved.ok) {
+        // Fail closed on line numbers but keep the primary value: the chat chip
+        // still references the whole file.
+        console.warn(`[MD4H] Copilot selection mapping failed closed: ${resolved.error.detail}`);
+      }
+
+      const plan = buildCopilotChatPlan({
+        documentUri: document.uri.toString(),
+        documentText,
+        selectionText,
+        lineRange,
+        chatCommandAvailable: await isCopilotChatCommandAvailable(),
+        documentScheme: document.uri.scheme,
+      });
+
+      if (plan.action === 'attach') {
+        // Every chip needs its own identity: the chat attachment model
+        // deduplicates by `uri.toString() + range`, and a serialized range
+        // object stringifies identically for every range, so several ranges of
+        // one file must differ in the URI fragment.
+        const chipUri = plan.fragment
+          ? document.uri.with({ fragment: plan.fragment })
+          : document.uri;
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+          isPartialQuery: true,
+          attachFiles: [{ uri: chipUri, ...(plan.range ? { range: plan.range } : {}) }],
+        });
+        if (!lineRange) {
+          vscode.window.showWarningMessage(
+            'The selection could not be mapped to exact source lines, so the whole file was attached to GitHub Copilot Chat.'
+          );
+        }
+        return;
+      }
+
+      await vscode.env.clipboard.writeText(
+        renderCopilotClipboardFallback({
+          displayPath: getCopilotDisplayPath(document.uri),
+          lineRange,
+          selectionText,
+        })
+      );
+      vscode.window.showInformationMessage(
+        'Copilot Chat is unavailable, so the selection was copied to the clipboard with its source location.'
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MD4H] Failed to add selection to GitHub Copilot: ${errorMessage}`);
+      vscode.window.showErrorMessage(`Failed to add selection to GitHub Copilot: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Read the system clipboard for the webview's context-menu Paste action.
+   * Webviews cannot read the clipboard reliably, so the host bridges it and
+   * returns the text as a `clipboardText` message.
+   */
+  private async handleRequestClipboardText(webview: vscode.Webview): Promise<void> {
+    try {
+      const text = await vscode.env.clipboard.readText();
+      await webview.postMessage({ type: 'clipboardText', text });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MD4H] Failed to read clipboard: ${errorMessage}`);
+      vscode.window.showErrorMessage(`Failed to read clipboard: ${errorMessage}`);
     }
   }
 
@@ -9458,7 +9590,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
   }
 
   private async handleCheckImageRename(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9536,7 +9668,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Renames the file and updates references in markdown files across workspace
    */
   private async handleRenameImage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9697,7 +9829,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Check if image is in workspace
    */
   private async handleCheckImageInWorkspace(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9785,7 +9917,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Get image metadata (file size, dimensions, last modified, etc.)
    */
   private async handleGetImageMetadata(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -9870,7 +10002,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Handle reveal image in OS file manager (Finder/Explorer)
    */
   private async handleRevealImageInOS(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument
   ): Promise<void> {
     const imagePath = message.imagePath as string;
@@ -9930,7 +10062,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Handle reveal image in VS Code Explorer
    */
   private async handleRevealImageInExplorer(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument
   ): Promise<void> {
     const imagePath = message.imagePath as string;
@@ -10020,7 +10152,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Handle file search request from webview
    */
   private async handleSearchFiles(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     webview: vscode.Webview
   ): Promise<void> {
     try {
@@ -10250,7 +10382,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * and authored suffix handling as the renderer.
    */
   private async handleOpenImage(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument
   ): Promise<void> {
     const imagePath = String(message.path || '');
@@ -10333,7 +10465,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * ignored when locating the file.
    */
   private async handleOpenFileLink(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument
   ): Promise<void> {
     try {
@@ -10446,7 +10578,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Copy a local image to the workspace and return an encoded Markdown destination.
    */
   private async handleCopyLocalImageToWorkspace(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): Promise<void> {
@@ -10559,7 +10691,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * Handle setting update request from webview
    */
   private async handleUpdateSetting(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     webview: vscode.Webview
   ): Promise<void> {
     const key = message.key as string;
@@ -10841,7 +10973,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
    * ACK and could discard the final hidden-view revision.
    */
   private deferReadyUntilPendingDocumentBoundaries(
-    message: { type: string; [key: string]: unknown },
+    message: { type: string;[key: string]: unknown },
     document: vscode.TextDocument,
     webview: vscode.Webview
   ): boolean {
@@ -11318,26 +11450,26 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     const executionOptions =
       options?.editReason === 'typing'
         ? {
-            ...options,
-            viewGeneration:
-              options.viewGeneration ?? this.getEditViewGeneration(options.sourceWebview),
-            baseDocumentVersion: options.baseDocumentVersion ?? this.getDocumentVersion(document),
-          }
+          ...options,
+          viewGeneration:
+            options.viewGeneration ?? this.getEditViewGeneration(options.sourceWebview),
+          baseDocumentVersion: options.baseDocumentVersion ?? this.getDocumentVersion(document),
+        }
         : options;
     const execute = (context: DocumentEditExecutionContext<string>): Promise<boolean> =>
       this.applyEditNow(content, document, { ...executionOptions, signal: context.signal });
     const result =
       options?.editReason === 'typing'
         ? await this.documentEditCoordinator.enqueue(documentKey, {
-            kind: 'typing',
-            viewGeneration: executionOptions?.viewGeneration ?? 'unattributed-view',
-            baseVersion: executionOptions?.baseDocumentVersion ?? this.getDocumentVersion(document),
-            execute,
-          })
+          kind: 'typing',
+          viewGeneration: executionOptions?.viewGeneration ?? 'unattributed-view',
+          baseVersion: executionOptions?.baseDocumentVersion ?? this.getDocumentVersion(document),
+          execute,
+        })
         : await this.documentEditCoordinator.enqueue(documentKey, {
-            kind: 'operation',
-            execute,
-          });
+          kind: 'operation',
+          execute,
+        });
 
     if (result.status === 'completed') return result.value;
     if (result.status === 'coalesced') return true;
@@ -11384,12 +11516,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
     // equality, Markdown analysis, or WorkspaceEdit sees the payload.
     const effectiveContent = options?.sourceWebview
       ? await this.resolvePendingImageDestinations(
-          content,
-          options.sourceWebview,
-          options.pendingImageViewGeneration ??
-            options.viewGeneration ??
-            this.getEditViewGeneration(options.sourceWebview)
-        )
+        content,
+        options.sourceWebview,
+        options.pendingImageViewGeneration ??
+        options.viewGeneration ??
+        this.getEditViewGeneration(options.sourceWebview)
+      )
       : content;
 
     // Image persistence is asynchronous. A concurrent source change (or
@@ -11667,6 +11799,78 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider, 
 
 function getNonce(): string {
   return crypto.randomBytes(16).toString('hex');
+}
+
+/**
+ * Validate the untrusted canonical block list sent with an
+ * `addSelectionToCopilot` message. Returns `null` unless every entry is a
+ * well-formed, strictly ordered top-level block.
+ */
+function parseCopilotCanonicalBlocks(value: unknown): CanonicalCopilotBlock[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const blocks: CanonicalCopilotBlock[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const entry = value[index] as Partial<CanonicalCopilotBlock> | null;
+    if (
+      !entry ||
+      typeof entry.ordinal !== 'number' ||
+      !Number.isInteger(entry.ordinal) ||
+      entry.ordinal < 0 ||
+      typeof entry.kind !== 'string' ||
+      entry.kind.length === 0 ||
+      typeof entry.markdown !== 'string' ||
+      entry.markdown.length === 0 ||
+      (index > 0 && entry.ordinal <= blocks[index - 1].ordinal)
+    ) {
+      return null;
+    }
+    blocks.push({ ordinal: entry.ordinal, kind: entry.kind, markdown: entry.markdown });
+  }
+  return blocks;
+}
+
+/**
+ * Read the untrusted selection endpoint anchors sent with an
+ * `addSelectionToCopilot` message. Missing or oversized values degrade to empty
+ * anchors, which keeps the whole-block line span instead of guessing.
+ */
+function parseCopilotSelectionAnchors(message: { [key: string]: unknown }): CopilotSelectionAnchors {
+  return {
+    startText: readBoundedAnchorText(message.selectionStartText),
+    endText: readBoundedAnchorText(message.selectionEndText),
+  };
+}
+
+function readBoundedAnchorText(value: unknown): string {
+  return typeof value === 'string' ? value.slice(0, 500) : '';
+}
+
+/**
+ * Whether this VS Code build registers the built-in chat command used to attach
+ * a file + line-range chip. The command is internal-but-entrenched, so it is
+ * feature-detected instead of assumed.
+ */
+async function isCopilotChatCommandAvailable(): Promise<boolean> {
+  try {
+    const commands = await vscode.commands.getCommands(true);
+    return commands.includes('workbench.action.chat.open');
+  } catch (error) {
+    console.warn('[MD4H] Could not enumerate commands for Copilot Chat:', error);
+    return false;
+  }
+}
+
+/** Workspace-relative path when available, otherwise the URI's file name. */
+function getCopilotDisplayPath(uri: vscode.Uri): string {
+  if (uri.scheme === 'untitled') return uri.path || 'untitled';
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+  if (workspaceFolder) {
+    const relative = path.relative(workspaceFolder.uri.fsPath, uri.fsPath);
+    if (relative && !relative.startsWith('..') && !path.isAbsolute(relative)) {
+      return relative.split(path.sep).join('/');
+    }
+  }
+  return path.basename(uri.fsPath) || uri.path;
 }
 
 /** Identify image filesystem paths without interpreting literal filename delimiters. */
