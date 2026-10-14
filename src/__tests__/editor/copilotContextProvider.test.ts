@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { MarkdownEditorProvider } from '../../editor/MarkdownEditorProvider';
 import { toCopilotChatAttachRange } from '../../editor/copilotContext';
 
-type Message = { type: string;[key: string]: unknown };
+type Message = { type: string; [key: string]: unknown };
 
 type ProviderInternals = {
   handleWebviewMessage: (
