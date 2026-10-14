@@ -3,10 +3,13 @@
  * attach contract, in a real VS Code window.
  *
  * The toolbar flow runs through the rich view and cannot be driven from the
- * extension host, so this covers the two workbench contracts the feature rests
- * on: which presence check says "GitHub Copilot is available", and whether
+ * extension host, and the chat input's chips cannot be read back from it
+ * either, so this covers the two workbench contracts the feature rests on:
+ * which presence check says "GitHub Copilot is available", and whether
  * `workbench.action.chat.open` accepts the fragment-identified file + internal
- * 1-based line range payload the host sends.
+ * 1-based line range payloads as one attachment per press under the chat's
+ * `uri + range.toString()` identity rule. The visible chips stay a manual QA
+ * check (docs/QA_MANUAL.md).
  */
 
 const assert = require('node:assert/strict');
@@ -41,7 +44,20 @@ suite('Add to GitHub Copilot in the Extension Development Host', () => {
     }
   });
 
-  test('the chat input accepts one fragment-identified line-range context', async function () {
+  /**
+   * The chat names an attachment `uri.toString() + range.toString()`
+   * (`toFileVariableEntry`) and drops repeats of an id
+   * (`ChatRequestVariableSet`), so two contexts of one file survive as two
+   * individually removable chips only while their ids differ. A `range`
+   * crossing the extension host arrives as a plain object, so its `toString()`
+   * is the same for every range of one file — the URI fragment is the only
+   * identity left.
+   */
+  function attachmentId(attachFile) {
+    return attachFile.uri.toString() + String(attachFile.range);
+  }
+
+  test('the chat input takes two presses of one file as two chips', async function () {
     this.timeout(60_000);
     // The attach payload is core workbench behaviour and needs only the chat
     // command; the Copilot extension is required only for availability gating.
@@ -54,33 +70,49 @@ suite('Add to GitHub Copilot in the Extension Development Host', () => {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspaceFolder, 'Expected integration fixture workspace');
     const fixtureUri = vscode.Uri.joinPath(workspaceFolder.uri, 'reference-lines.md');
+    const fixtureText = new TextDecoder().decode(await vscode.workspace.fs.readFile(fixtureUri));
+    const fixtureLines = fixtureText.split(/\r?\n/);
 
-    // The exact payload shape the extension sends: an additive partial query,
-    // a URI whose fragment names the lines (a distinct attachment identity per
-    // context), and the internal 1-based range, not vscode.Range.
-    await vscode.commands.executeCommand(CHAT_OPEN_COMMAND, {
-      isPartialQuery: true,
-      attachFiles: [
-        {
-          uri: fixtureUri.with({ fragment: 'L1-2' }),
-          range: { startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 4 },
-        },
-      ],
-    });
+    // The exact payload shape the extension sends per press: an additive
+    // partial query, a URI whose fragment names the lines (a distinct
+    // attachment id per context), and the internal 1-based range, not
+    // vscode.Range. The columns mirror `toCopilotChatAttachRange`, computed
+    // from the real saved text: 1 to one past the line's last character.
+    const contexts = [3, 5].map(lineNumber => ({
+      fragment: `L${lineNumber}-${lineNumber}`,
+      range: {
+        startLineNumber: lineNumber,
+        startColumn: 1,
+        endLineNumber: lineNumber,
+        endColumn: fixtureLines[lineNumber - 1].length + 1,
+      },
+    }));
+    const attachments = contexts.map(context => ({
+      uri: fixtureUri.with({ fragment: context.fragment }),
+      range: context.range,
+    }));
+    for (const attachment of attachments) {
+      await vscode.commands.executeCommand(CHAT_OPEN_COMMAND, {
+        isPartialQuery: true,
+        attachFiles: [attachment],
+      });
+    }
 
-    // A second press must be additive: another context with its own identity.
-    await vscode.commands.executeCommand(CHAT_OPEN_COMMAND, {
-      isPartialQuery: true,
-      attachFiles: [
-        {
-          uri: fixtureUri.with({ fragment: 'L3-3' }),
-          range: { startLineNumber: 3, startColumn: 1, endLineNumber: 3, endColumn: 5 },
-        },
-      ],
-    });
+    // Two presses must survive side by side: two distinct attachment ids
+    // under the chat's `uri + range.toString()` rule, so both contexts stay
+    // their own, individually removable chip.
+    const firstId = attachmentId(attachments[0]);
+    const secondId = attachmentId(attachments[1]);
+    assert.notEqual(firstId, secondId, 'Each press must keep its own chip');
 
-    const first = fixtureUri.with({ fragment: 'L1-2' }).toString();
-    const second = fixtureUri.with({ fragment: 'L3-3' }).toString();
-    assert.notEqual(first, second, 'Each context must carry its own identity');
+    // The URI fragments carry that identity alone: without them, two ranges
+    // of one file share one attachment id and the chat silently drops the
+    // second context as a duplicate — the exact failure the line fragments
+    // exist to prevent.
+    assert.equal(
+      attachmentId({ uri: fixtureUri, range: contexts[0].range }),
+      attachmentId({ uri: fixtureUri, range: contexts[1].range }),
+      'Without URI fragments the two contexts would collapse into one chip'
+    );
   });
 });

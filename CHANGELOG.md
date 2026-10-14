@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Add to GitHub Copilot from the toolbar.** A Copilot button sits beside **Copy Reference for AI**: it hands the caret or selection to GitHub Copilot Chat as context. Each press adds its own attachment chip — the file with its exact saved lines, such as `guide.md#L10-14` — so several contexts stack side by side in the chat input and each can be removed on its own. Unsaved changes are saved first, so the lines match what Copilot reads, and a spot that cannot be matched to the saved file attaches the whole file with a notice. Successive presses are counted per opening of the file ("Added ... (context 2)"); closing the file — even while it is being saved — and opening it again starts over at (context 1). The button shows only while GitHub Copilot Chat is available; otherwise the reference is copied to the clipboard instead.
+
 ---
 
 ## [0.4.4] - 2026-10-12

@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { MarkdownEditorProvider } from '../../editor/MarkdownEditorProvider';
 import { toCopilotChatAttachRange } from '../../editor/copilotContext';
 
-type Message = { type: string; [key: string]: unknown };
+type Message = { type: string;[key: string]: unknown };
 
 type ProviderInternals = {
   handleWebviewMessage: (
@@ -20,6 +20,7 @@ type ProviderInternals = {
   ) => void;
   feedbackSessions: Map<string, unknown>;
   feedbackWebviews: Map<string, Set<unknown>>;
+  copilotContexts: Map<string, Map<string, number>>;
   unregisterFeedbackWebview: (documentKey: string, webview: vscode.Webview) => void;
 };
 
@@ -184,6 +185,15 @@ describe('addToCopilot on the host', () => {
     expect(posted.filter(message => message.type === 'addToCopilot.result').at(-1)?.message).toBe(
       'Added @docs/guide.md#L1 to GitHub Copilot (context 2)'
     );
+
+    // The chat drops duplicate attachments by `uri.toString() + range.toString()`.
+    // Over the extension-host RPC the range is a plain object, so its toString()
+    // is the same for every range of one file; only the URI fragments keep the
+    // two presses two chips.
+    const idOf = (attach: { uri: { toString: () => string }; range?: unknown }): string =>
+      attach.uri.toString() + String(attach.range);
+    expect(idOf(second.attachFiles[0])).not.toBe(idOf(first.attachFiles[0]));
+    expect(String(first.attachFiles[0].range)).toBe(String(second.attachFiles[0].range));
   });
 
   it('keeps the number of a repeated context instead of counting it twice', async () => {
@@ -218,6 +228,54 @@ describe('addToCopilot on the host', () => {
     expect(result(posted)?.message).toBe('Added @docs/guide.md#L7 to GitHub Copilot (context 1)');
     expect(posted.filter(message => message.type === 'addToCopilot.result').at(-1)?.message).toBe(
       'Added @docs/guide.md#L7 to GitHub Copilot (context 1)'
+    );
+  });
+
+  it('does not carry the numbering over when the file closes during a save', async () => {
+    const provider = new MarkdownEditorProvider({} as unknown as vscode.ExtensionContext);
+    const document = createDocument({ dirty: true });
+    // A save slow enough for the file to be closed while it still runs.
+    let saveIsRunning: () => void = () => undefined;
+    const saveStarted = new Promise<void>(resolve => {
+      saveIsRunning = resolve;
+    });
+    let releaseSave: () => void = () => undefined;
+    document.save.mockImplementation(
+      () =>
+        new Promise<boolean>(resolve => {
+          saveIsRunning();
+          releaseSave = () => {
+            document.isDirty = false;
+            resolve(true);
+          };
+        })
+    );
+    const { webview } = createWebview(provider, document);
+    const internals = provider as unknown as ProviderInternals;
+    const documentKey = (document.uri as unknown as { toString: () => string }).toString();
+    internals.feedbackWebviews.set(documentKey, new Set([webview]));
+
+    internals.handleWebviewMessage(
+      request(),
+      document as unknown as vscode.TextDocument,
+      webview as unknown as vscode.Webview
+    );
+    await saveStarted;
+    // The last split closes while the save is still running.
+    internals.unregisterFeedbackWebview(documentKey, webview as unknown as vscode.Webview);
+    releaseSave();
+    for (let turn = 0; turn < 20; turn += 1) await new Promise(resolve => setImmediate(resolve));
+
+    // The press still reached the chat, but the closed document keeps no
+    // numbering: the late registration must not resurrect it.
+    expect(executeCommand).toHaveBeenCalledTimes(1);
+    expect(internals.copilotContexts.size).toBe(0);
+
+    // A reopened document starts its own numbering at 1.
+    const reopened = createWebview(provider, document);
+    await send(provider, document, reopened.webview, request(HEADING));
+    expect(result(reopened.posted)?.message).toBe(
+      'Added @docs/guide.md#L1 to GitHub Copilot (context 1)'
     );
   });
 
