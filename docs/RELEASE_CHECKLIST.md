@@ -22,36 +22,33 @@ npm run package:release
 code --install-extension markdown-for-humans-*.vsix
 # Test features manually
 
-# 4. Commit changes (version will auto-bump on publish)
-git add CHANGELOG.md
-git commit -m "chore: prepare release"
-git push
+# 4. Bump the version and date the CHANGELOG on a branch, open a PR, merge when CI is green
+npm version <x.y.z> --no-git-tag-version
+# Move [Unreleased] under [x.y.z] - YYYY-MM-DD; update the KNOWN_ISSUES.md version lines
 
-# 5. Publish to VS Code Marketplace (auto-bumps version)
-vsce login concretio
-vsce publish patch  # Choose: patch, minor, or major
+# 5. From merged main, build ONE vsix and publish that same file everywhere
+npx vsce package
+az login --tenant concret.io --allow-no-subscriptions             # Entra sign-in, once per session (needs publisher membership)
+npx vsce publish --azure-credential --packagePath markdown-for-humans-<x.y.z>.vsix   # VS Code Marketplace
+npx ovsx publish markdown-for-humans-<x.y.z>.vsix                 # Open VSX (needs OVSX_PAT or -p <token>)
+# NEVER use `vsce publish patch|minor|major`: it bumps the version at publish time
 
-# 6. Publish to Open VSX Registry (for Cursor & Devin Desktop)
-# First time only: ovsx create-namespace concretio -p <your-token>
-ovsx publish -p <your-token>
+# 6. Draft the GitHub release with the vsix attached (tag is created when you publish it)
+gh release create v<x.y.z> markdown-for-humans-<x.y.z>.vsix --draft --target <full merge SHA> --notes-file <notes.md>
 
-# 7. Create git tag AFTER publish
-git tag v$(node -p "require('./package.json').version")
-git push origin --tags
-
-# 8. Create GitHub release
-# Go to: https://github.com/concretios/markdown-for-humans/releases/new
-# Select the tag, copy/polish content from CHANGELOG.md, publish
-# Tip: Make it user-friendly with emojis and "What's New" sections
+# 7. When both stores show the new version, publish the draft as Latest
+gh release edit v<x.y.z> --draft=false --latest
 ```
 
 ### Version Bump Types
 
-| Command | Use Case | Example |
-|---------|----------|---------|
-| `vsce publish patch` | Bug fixes, minor updates | 0.1.0 → 0.1.1 |
-| `vsce publish minor` | New features, non-breaking | 0.1.1 → 0.2.0 |
-| `vsce publish major` | Breaking changes | 0.2.0 → 1.0.0 |
+| Change | Bump | Example |
+|--------|------|---------|
+| Bug fixes, small features (recent practice) | patch | 0.4.4 to 0.4.5 |
+| Larger feature batch, non-breaking | minor | 0.4.5 to 0.5.0 |
+| Breaking changes | major | 0.5.0 to 1.0.0 |
+
+Set the version with `npm version <x.y.z> --no-git-tag-version`, never at publish time.
 
 ---
 
@@ -67,7 +64,7 @@ git push origin --tags
 - [ ] Write human-readable release notes (What's New, Fixed, Changed sections)
 - [ ] Use CHANGELOG.md content for GitHub releases (copy/polish as needed)
 - [ ] ⚠️ **Never create separate RELEASE_NOTES_*.md files** - they become stale
-- [ ] Commit all changes (version will be auto-bumped during publish)
+- [ ] Bump `package.json` and `package-lock.json` in the release PR (`npm version <x.y.z> --no-git-tag-version`)
 
 ### Package & Test
 - [ ] Create package: `npm run package:release`
@@ -95,27 +92,38 @@ git push origin --tags
 
 ## Publication
 
-### Marketplace Account
-- [ ] Publisher account verified: https://marketplace.visualstudio.com/manage
-- [ ] 2FA enabled on publishing account
-- [ ] Personal Access Token created (scope: "Marketplace (Manage)")
+### Marketplace Account (Microsoft Entra, no PAT)
+
+Marketplace publishing uses Microsoft Entra sign-in. Do NOT create, paste or use an Azure DevOps PAT for `vsce`.
+`vsce publish --azure-credential` borrows the identity that `az login` left on this machine.
+
+- [ ] Publisher `concretio` lists your Entra user as Owner or Contributor: https://marketplace.visualstudio.com/manage/publishers/concretio (Members tab)
+- [ ] Azure CLI installed (`az --version`)
+- [ ] Signed in as that Entra user, not the personal md-human@concret.io account (personal Microsoft accounts cannot use `az login`):
+  ```bash
+  az login --tenant concret.io --allow-no-subscriptions
+  az account show --query user.name -o tsv     # must print your Entra UPN
+  az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query expiresOn -o tsv   # prints an expiry, never the token
+  ```
+- If the CLI crashes in the tenant picker (seen on Azure CLI 2.91.0): `az config set core.login_experience_v2=off`
 
 ### Publish to VS Code Marketplace
 
-**Recommended: Automatic version bump + publish**
-- [ ] Login: `vsce login concretio`
-- [ ] Choose version type and publish:
-  - `vsce publish patch` — Bug fixes (0.1.0 → 0.1.1)
-  - `vsce publish minor` — New features (0.1.1 → 0.2.0)
-  - `vsce publish major` — Breaking changes (0.2.0 → 1.0.0)
+**Recommended: publish the exact vsix you tested**
+- [ ] Merge the release PR, then from main: `npx vsce package`
+- [ ] Confirm Entra sign-in (see Marketplace Account above)
+- [ ] Publish: `npx vsce publish --azure-credential --packagePath markdown-for-humans-<x.y.z>.vsix`
+- [ ] Do not use `vsce publish patch|minor|major`; it changes the version at publish time
+- [ ] The Marketplace takes about 15 minutes to validate before the new version shows
 
-**Alternative: Manual version control**
-- [ ] Update version in `package.json` manually
-- [ ] Run `vsce publish` (publishes current version)
+**If publish fails with 401 or 403, check in this order. Never fall back to a PAT silently.**
+1. Wrong `az` account or tenant: `az account show` must show your Entra UPN and tenant `9620b1de-bb79-421a-9a24-2d5e7a184d10`
+2. Your Entra user is not on the publisher Members page
+3. A personal Microsoft account was used (it cannot mint Entra tokens)
+4. Token expired: run `az login --tenant concret.io --allow-no-subscriptions` again
 
 **Alternative: Web upload**
-- [ ] Build: `npm run package:release`
-- [ ] Upload `.vsix` at https://marketplace.visualstudio.com/manage
+- [ ] Upload the `.vsix` at https://marketplace.visualstudio.com/manage
 
 ### Publish to Open VSX Registry (For Cursor, Devin Desktop, VSCodium & More)
 
@@ -135,24 +143,16 @@ git push origin --tags
   - Only needed once per publisher
 
 **Every Release:**
-- [ ] Publish: `ovsx publish -p <your-token>`
+- [ ] Publish the same vsix: `npx ovsx publish markdown-for-humans-<x.y.z>.vsix` (token from `OVSX_PAT` or `-p <token>`)
+- [ ] Open VSX takes about 10 minutes (pre-publish scan) before the new version shows
 - [ ] Verify at https://open-vsx.org/extension/concretio/markdown-for-humans
 
 ### Git Tag & GitHub Release (Post-Publish)
 
-**Create Git Tag:**
-- [ ] Check published version: `cat package.json | grep version`
-- [ ] Create tag: `git tag v<version>` (e.g., `git tag v0.1.1`)
-- [ ] Push tag: `git push origin v<version>`
-
-**Create GitHub Release:**
-- [ ] Create release: https://github.com/concretios/markdown-for-humans/releases/new
-- [ ] Select tag: `v<version>` (just created)
-- [ ] Title: "v<version> - <description>"
-- [ ] Description: Copy from CHANGELOG.md
-- [ ] Attach `.vsix` file (optional)
-- [ ] Mark as "Latest release"
-- [ ] Publish
+**Draft first, publish after both stores show the new version:**
+- [ ] `gh release create v<x.y.z> markdown-for-humans-<x.y.z>.vsix --draft --target <full merge SHA> --title "v<x.y.z> - <description>" --notes-file <notes.md>` (`--target` needs the full SHA, not a short one)
+- [ ] Notes: a "New in" line, install links, then the CHANGELOG section for the version
+- [ ] Publish: `gh release edit v<x.y.z> --draft=false --latest` (this creates the tag)
 
 ## Post-Release
 
@@ -176,22 +176,16 @@ git push origin --tags
 
 **Quick Commands:**
 ```bash
-# Full test cycle before publishing
-npm run lint:fix && npm test && npm run build:release && npm run package:release
+# Full test cycle before the release PR
+npm run lint && npm test && npm run build:release
 
-# Publish to VS Code Marketplace
-vsce login concretio
-vsce publish patch  # For bug fixes (0.1.0 → 0.1.1)
-# or: vsce publish minor  # For new features (0.1.1 → 0.2.0)
-# or: vsce publish major  # For breaking changes (0.2.0 → 1.0.0)
+# After merge, from main
+npx vsce package
+npx vsce publish --azure-credential --packagePath markdown-for-humans-<x.y.z>.vsix
+npx ovsx publish markdown-for-humans-<x.y.z>.vsix
 
-# Publish to Open VSX (for Cursor, Devin Desktop, VSCodium & more)
-# First time only: ovsx create-namespace concretio -p <your-token>
-ovsx publish -p <your-token>
-
-# After publishing, create git tag
-git tag v$(node -p "require('./package.json').version")
-git push origin --tags
+# After both stores show the version
+gh release edit v<x.y.z> --draft=false --latest
 ```
 
 **Notes:**

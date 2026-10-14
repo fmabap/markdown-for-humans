@@ -14,6 +14,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [0.4.5] - 2026-10-14
+
+### Added
+
+- **Add to GitHub Copilot.** When GitHub Copilot Chat is installed and signed in, a Copilot button appears in the toolbar beside **@**. Put the caret on a line or select a range, click it, and the exact lines of the saved file are attached to Copilot Chat as their own context chip. Each press adds another chip, and you can remove them one by one. If the file has unsaved changes it is saved first, so the lines match what Copilot reads. The button stays hidden when Copilot Chat is not available. Thanks to [@fmabap](https://github.com/fmabap) for the contribution ([#167](https://github.com/concretios/markdown-for-humans/issues/167), [#168](https://github.com/concretios/markdown-for-humans/pull/168)).
+
+---
+
 ## [0.4.4] - 2026-10-12
 
 ### Added
